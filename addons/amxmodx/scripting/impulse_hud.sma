@@ -4,6 +4,7 @@
 #include <impulse/defs>
 #include <impulse/core>
 #include <impulse/hud>
+#include <impulse/ranks>
 #include <impulse/recording>
 #include <impulse/stocks>
 
@@ -203,7 +204,15 @@ stock handlePlyTimers()
         {
             timer_getrecordinginfo( target, time, szRecName, sizeof( szRecName ) );
 
-            timer_formatSeconds( time, szFormatted, sizeof( szFormatted ) );
+            if ( time != INVALID_TIME )
+            {
+                timer_formatSeconds( time, szFormatted, sizeof( szFormatted ) );
+            }
+            else
+            {
+                copy( szFormatted, sizeof( szFormatted ), "No Record!" );
+            }
+            
             set_hudmessage( 255, 255, 255, -1.0, 0.7, 0, 0.0, 0.1, 0.02, 0.02 );
             show_hudmessage( ply, "Replay Bot^n%s^n%s", szRecName, szFormatted );
             

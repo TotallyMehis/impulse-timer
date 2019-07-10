@@ -31,12 +31,6 @@ stock dbCreateTables()
     SQL_ThreadQuery( g_DB_Tuple, "cbEmpty", g_DB_szQuery );
 
     formatex( g_DB_szQuery, sizeof( g_DB_szQuery ),
-        "CREATE TABLE IF NOT EXISTS " + DB_TABLE_RANKS + " (" +
-        "plyid INTEGER PRIMARY KEY," +
-        "rankpoints INTEGER NOT NULL)" );
-    SQL_ThreadQuery( g_DB_Tuple, "cbEmpty", g_DB_szQuery );
-
-    formatex( g_DB_szQuery, sizeof( g_DB_szQuery ),
         "CREATE TABLE IF NOT EXISTS " + DB_TABLE_MAPS + " (" +
         "mapid INTEGER PRIMARY KEY," +
         "mapname VARCHAR(64) NOT NULL UNIQUE)" );
@@ -65,6 +59,19 @@ stock dbGetBestTime()
     SQL_ThreadQuery( g_DB_Tuple, "cbBestTime", g_DB_szQuery );
 }
 
+stock dbGetPlyTime( ply )
+{
+    new data[2];
+    data[0] = ply;
+
+    formatex( g_DB_szQuery, sizeof( g_DB_szQuery ),
+        "SELECT time FROM " + DB_TABLE_TIMES + " WHERE plyid=%i AND mapid=%i",
+        g_iPlyId[ply],
+        g_iMapId );
+    
+    SQL_ThreadQuery( g_DB_Tuple, "cbPlyData", g_DB_szQuery, data, sizeof( data ) );
+}
+
 stock dbGetMapId()
 {
     formatex( g_DB_szQuery, sizeof( g_DB_szQuery ), "SELECT mapid FROM " + DB_TABLE_MAPS + " WHERE mapname='%s'", g_szCurMap );
@@ -91,15 +98,6 @@ stock dbInsertTime( ply, Float:time, isNew )
         g_iPlyId[ply],
         g_iMapId,
         time );
-    SQL_ThreadQuery( g_DB_Tuple, "cbEmpty", g_DB_szQuery );
-}
-
-stock dbUpdateRank( ply )
-{
-    formatex( g_DB_szQuery, sizeof( g_DB_szQuery ),
-        "REPLACE INTO " + DB_TABLE_RANKS + " (plyid, rankpoints) VALUES (%i, '%i')",
-        g_iPlyId[ply],
-        g_iPlyRankPoints[ply] );
     SQL_ThreadQuery( g_DB_Tuple, "cbEmpty", g_DB_szQuery );
 }
 

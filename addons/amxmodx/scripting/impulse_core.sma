@@ -24,7 +24,6 @@
 
 #define DB_NAME             "impulse"
 
-#define DB_TABLE_RANKS      "imp_ranks"
 #define DB_TABLE_USERS      "imp_users"
 #define DB_TABLE_MAPS       "imp_maps"
 #define DB_TABLE_TIMES      "imp_times"
@@ -41,6 +40,7 @@
 new g_fwdTimerStartPost;
 new g_fwdTimerReset;
 new g_fwdTimerEndPost;
+new g_fwdPlyIdPost;
 new g_fwdSendSpec;
 
 // TIMER
@@ -79,21 +79,6 @@ new CsTeams:g_iPrefferedTeam = CS_TEAM_CT;
 new Float:g_flPlyWarning[IMP_MAXPLAYERS]; // Make sure players aren't spamming anything.
 
 
-// RANKS
-new const g_szRanks[][] = {
-    "UNRANKED", "NOVICE",
-    "AMATEUR", "CASUAL",
-    "SKILLED", "PRO",
-    "ELITE", "MASTER",
-    "A-LIST"
-};
-new const g_iMaxRanks = sizeof( g_szRanks ); // 9
-new const g_iMaxRankLength = 9;
-new const g_iRankPoints[] = { -1, 1, 5, 20, 40, 80, 120, 160, 250 };
-new g_iPlyRankPoints[IMP_MAXPLAYERS];
-new g_iPlyRank[IMP_MAXPLAYERS];
-
-
 // CACHE
 new g_iMaxPlys;
 new g_sv_airaccelerate;
@@ -114,6 +99,8 @@ public plugin_init()
     g_fwdTimerStartPost = CreateMultiForward( "timer_on_start_post", ET_IGNORE, FP_CELL );
     g_fwdTimerReset = CreateMultiForward( "timer_on_reset", ET_IGNORE, FP_CELL );
     g_fwdTimerEndPost = CreateMultiForward( "timer_on_end_post", ET_IGNORE, FP_CELL, FP_FLOAT );
+
+    g_fwdPlyIdPost = CreateMultiForward( "timer_on_ply_id", ET_IGNORE, FP_CELL, FP_CELL );
 
     g_fwdSendSpec = CreateMultiForward( "timer_on_send_spec", ET_IGNORE, FP_CELL );
 
@@ -202,8 +189,6 @@ public plugin_init()
     register_clcmd( "getout", szCmdBlocked );
     register_clcmd( "reportingin", szCmdBlocked );
     register_clcmd( "report", szCmdBlocked );
-
-    set_task( 1.0, "taskRegisterSay" );
     
     
     // Forwards
@@ -237,9 +222,32 @@ public plugin_end()
     SQL_FreeHandle( g_DB_Tuple );
 }
 
+public timer_on_ply_id( ply, plyid )
+{
+    dbUpdateDatabase( ply );
+
+    dbGetPlyTime( ply );
+}
+
 public timer_on_reset( ply )
 {
     g_flPlyStartTime[ply] = INVALID_TIME;
+}
+
+public Handle:_timer_getdb(id, num)
+{
+    return g_DB_Tuple;
+}
+
+public _timer_getplyid(id, num)
+{
+    new ply = get_param( 1 );
+    return g_iPlyId[ply];
+}
+
+public _timer_getmapid(id, num)
+{
+    return g_iMapId;
 }
 
 public Float:_timer_gettime(id, num)
@@ -262,35 +270,23 @@ public Float:_timer_getsrtime(id, num)
     return g_flMapBestTime;
 }
 
-public bool:_timer_getrank(id, num)
-{
-    new ply = get_param( 1 );
-
-    new len = get_param( 3 );
-    set_string( 2, g_szRanks[ g_iPlyRank[ply] ], min( len, g_iMaxRankLength ) );
-}
-
 public plugin_natives()
 {
     register_library( "impulse_core" );
 
+    register_native( "timer_getdb", "_timer_getdb" );
+
+    register_native( "timer_getplyid", "_timer_getplyid" );
+    register_native( "timer_getmapid", "_timer_getmapid" );
+
     register_native( "timer_gettime", "_timer_gettime" );
     register_native( "timer_getpbtime", "_timer_getpbtime" );
     register_native( "timer_getsrtime", "_timer_getsrtime" );
-
-    register_native( "timer_getrank", "_timer_getrank" );
 }
 
 public eventRoundStart()
 {
     set_task( 0.1, "taskMapStuff" );
-}
-
-public taskRegisterSay()
-{
-    new const szCmdSay[] = "cmdSay";
-    register_clcmd( "say", szCmdSay );
-    register_clcmd( "say_team", szCmdSay );
 }
 
 public plugin_precache()
@@ -367,9 +363,6 @@ public handleCmdCheck()
 
 public client_authorized( ply )
 {
-    g_iPlyRank[ply] = 0;
-    g_iPlyRankPoints[ply] = 0;
-
     g_iPlyId[ply] = 0;
 
 
@@ -487,17 +480,36 @@ public taskMapStuff()
         if ( pev_valid( ent ) )
             engfunc( EngFunc_RemoveEntity, ent );
     
+
     ent = 0;
-    new Float:vecAngles[3];
+
+    new Float:vecMoveDir[3];
+    new Float:vecUp[3] = { 0.0, 0.0, 1.0 };
+
     // Lock doors so we can bhop on them better.
     while ( (ent = engfunc( EngFunc_FindEntityByString, ent, "classname", "func_door" )) > 0 )
         if ( pev_valid( ent ) )
         {
             // Check if it's a bhop block.
-            // Well, blocks that go down instead of up.
-            pev( ent, pev_movedir, vecAngles );
-            
-            if ( vecAngles[2] < 1.0 ) DispatchKeyValue( ent, "speed", 0 );
+            new spawnflags = pev( ent, pev_spawnflags );
+
+            // Not even solid?
+            if ( spawnflags & SF_DOOR_PASSABLE ) continue;
+
+            // Not going back automatically?
+            if ( spawnflags & SF_DOOR_NO_AUTO_RETURN ) continue;
+
+            // Only use key activates?
+            if ( spawnflags & SF_DOOR_USE_ONLY ) continue;
+
+
+            // If we're going up, ignore us.
+            pev( ent, pev_movedir, vecMoveDir );
+
+            if ( xs_vec_dot( vecMoveDir, vecUp ) > 0.0 ) continue;
+
+
+            DispatchKeyValue( ent, "speed", 0 );
         }
             
     
@@ -664,7 +676,7 @@ stock on_press_end( ply )
 
 
     new bool:bFirstTime = g_flPlyBestTime[ply] == INVALID_TIME;
-    new bool:bBeatOwn = !bFirstTime && flNewTime < g_flPlyBestTime[ply];
+    new bool:bBeatOwn = (!bFirstTime) && flNewTime < g_flPlyBestTime[ply];
     new bool:bFirstMapBeat = g_flMapBestTime == INVALID_TIME;
     new bool:bIsBest = bFirstMapBeat || flNewTime < g_flMapBestTime;
     
@@ -694,16 +706,11 @@ stock on_press_end( ply )
     }
     else if ( bBeatOwn )
     {
-        if ( bFirstTime )
-        {
-            client_print_color( 0, ply, CHAT_PREFIX + "^x03%s^x01 beat the map for the first time! ^x04(^x03%s^x04)", szName, szFormatted );
-        }
-        else
-        {
-            client_print_color( 0, ply, CHAT_PREFIX + "^x03%s^x01 beat the map! ^x04(^x03%s^x04)^x01 Improving ^x03%.2f^x01s!", szName, szFormatted, g_flPlyBestTime[ply] - flNewTime );
-        }
-
-        g_flPlyBestTime[ply] = flNewTime;
+        client_print_color( 0, ply, CHAT_PREFIX + "^x03%s^x01 beat the map! ^x04(^x03%s^x04)^x01 Improving ^x03%.2f^x01s!", szName, szFormatted, g_flPlyBestTime[ply] - flNewTime );
+    }
+    else if ( bFirstTime )
+    {
+        client_print_color( 0, ply, CHAT_PREFIX + "^x03%s^x01 beat the map for the first time! ^x04(^x03%s^x04)", szName, szFormatted );
     }
     else
     {
@@ -717,31 +724,13 @@ stock on_press_end( ply )
 
     emit_sound( 0, CHAN_AUTO, g_szSounds[bIsBest], VOL_NORM, ATTN_NORM, 0, PITCH_NORM );
     
-    
-    static szSteamID[32];
-    get_user_authid( ply, szSteamID, sizeof( szSteamID ) );
-
-
 
     // Finally, update SQL!
-    if ( bFirstTime || bIsBest || bBeatOwn )
+    if ( bFirstTime || bBeatOwn )
     {
-        dbInsertTime( ply, flNewTime, bFirstTime );
-    }
-    
-    if ( bFirstTime )
-    {
-        g_iPlyRankPoints[ply]++;
-        
-        new prevrank = g_iPlyRank[ply];
-        g_iPlyRank[ply] = getPlyRank( ply );
-        
-        if ( prevrank != g_iPlyRank[ply] )
-        {
-            client_print_color( ply, ply, CHAT_PREFIX + "Your rank is now ^x03%s^x01!", g_szRanks[ g_iPlyRank[ply] ] );
-        }
-        
-        dbUpdateRank( ply );
+        dbInsertTime( ply, flNewTime, bBeatOwn );
+
+        g_flPlyBestTime[ply] = flNewTime;
     }
     
     set_pev( ply, pev_frags, pev( ply, pev_frags ) + 1 );
@@ -798,16 +787,6 @@ public fwdUse( button, ply, activator, type, Float:flValue )
 //     return FMRES_IGNORED;
 // }
 
-
-stock getPlyRank( ply )
-{
-    for ( new i = g_iMaxRanks - 1; i >= 0; i-- )
-        if ( g_iPlyRankPoints[ply] >= g_iRankPoints[i] )
-            return i;
-    
-    return 0;
-}
-
 stock bool:isPlyAuthorized( ply )
 {
     return g_iPlyId[ply] != 0;
@@ -822,6 +801,12 @@ stock sendResetFwd( ply )
 {
     new ret;
     return ExecuteForward( g_fwdTimerReset, ret, ply );
+}
+
+stock sendPlyIdFwd( ply )
+{
+    new ret;
+    return ExecuteForward( g_fwdPlyIdPost, ret, ply, g_iPlyId[ply] );
 }
 
 stock toSpec( ply )

@@ -42,14 +42,7 @@ public cbPlyId( failState, Handle:hQuery, szError[], iError, data[], size, Float
     g_iPlyId[ply] = plyid;
 
 
-    dbUpdateDatabase( ply );
-
-
-    formatex( g_DB_szQuery, sizeof( g_DB_szQuery ), "SELECT time FROM " + DB_TABLE_TIMES + " WHERE plyid=%i AND mapid=%i", plyid, g_iMapId );
-    SQL_ThreadQuery( g_DB_Tuple, "cbPlyData", g_DB_szQuery, data, size );
-    
-    formatex( g_DB_szQuery, sizeof( g_DB_szQuery ), "SELECT rankpoints FROM " + DB_TABLE_RANKS + " WHERE plyid=%i", plyid );
-    SQL_ThreadQuery( g_DB_Tuple, "cbPlyRank", g_DB_szQuery, data, size );
+    sendPlyIdFwd( ply );
 }
 
 public cbMapId( failState, Handle:hQuery, szError[], iError, data[], size, Float:queueTime )
@@ -100,38 +93,6 @@ public cbPlyData( failState, Handle:hQuery, szError[], iError, data[], size, Flo
     SQL_ReadResult( hQuery, 0, g_flPlyBestTime[ply] );
     
     server_print( CONSOLE_PREFIX + "Player %i had PB of %.2fs!", ply, g_flPlyBestTime[ply] );
-}
-
-public cbPlyRank( failState, Handle:hQuery, szError[], iError, data[], size, Float:queueTime )
-{
-    if ( failState ) return;
-    
-    
-    new ply = data[0];
-    if ( !is_user_connecting( ply ) && !is_user_connected( ply ) ) return;
-
-    
-    if ( !SQL_NumResults( hQuery ) )
-    {
-        server_print( CONSOLE_PREFIX + "Player %i had no ranks, making one for them!", ply );
-        
-        new szSteamId[32];
-        getPlySteamId( ply, szSteamId, sizeof( szSteamId ) );
-        
-        formatex( g_DB_szQuery, sizeof( g_DB_szQuery ), "INSERT INTO " + DB_TABLE_RANKS + " (uid) VALUES (%i)", g_iPlyId[ply] );
-        SQL_ThreadQuery( g_DB_Tuple, "cbEmpty", g_DB_szQuery );
-        
-        g_iPlyRankPoints[ply] = 0;
-        g_iPlyRank[ply] = 0;
-        
-        return;
-    }
-    
-
-    g_iPlyRankPoints[ply] = SQL_ReadResult( hQuery, 0 );
-    g_iPlyRank[ply] = getPlyRank( ply );
-    
-    server_print( CONSOLE_PREFIX + "Player %i rank points: %i", ply, g_iPlyRankPoints[ply] );
 }
 
 public cbBestTime( failState, Handle:hQuery, szError[], iError, data[], size, Float:queueTime )

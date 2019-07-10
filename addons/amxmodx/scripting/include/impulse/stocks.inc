@@ -27,9 +27,14 @@ static _szMins[3];
 static _szSecs[6];
 stock timer_formatSeconds( const Float:in_secs, szTarget[], nLength, bool:bIsDeci = false )
 {
-    new iMins = floatround( in_secs / 60.0, floatround_method:floatround_floor );
-
-    new Float:secs = in_secs - iMins * 60.0;
+    new Float:secs = 0.0;
+    new iMins = 0;
+    
+    if ( in_secs > 0.0 ) 
+    {
+        iMins = floatround( in_secs / 60.0, floatround_method:floatround_floor );
+        secs = in_secs - iMins * 60.0;
+    }
 
     
     formatex( _szMins, sizeof( _szMins ), ( iMins < 10 ) ? "0%i" : "%i", iMins );
