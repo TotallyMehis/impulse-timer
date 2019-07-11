@@ -22,7 +22,7 @@ public cbPlyRank( failState, Handle:hQuery, szError[], iError, data[], size, Flo
         
 
         g_iPlyRankPoints[ply] = 0;
-        g_iPlyRank[ply] = 0;
+        setPlyRank( ply );
         
 
         return;
@@ -30,7 +30,7 @@ public cbPlyRank( failState, Handle:hQuery, szError[], iError, data[], size, Flo
     
 
     g_iPlyRankPoints[ply] = SQL_ReadResult( hQuery, 0 );
-    g_iPlyRank[ply] = getPlyRank( ply );
+    setPlyRank( ply );
     
     server_print( CONSOLE_PREFIX + "Player %i rank points: %i", ply, g_iPlyRankPoints[ply] );
 }

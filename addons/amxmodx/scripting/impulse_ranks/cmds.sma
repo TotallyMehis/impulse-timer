@@ -12,7 +12,7 @@ public cmdSay( ply )
     get_user_name( ply, szName, sizeof( szName ) );
     
     
-    client_print_color( 0, ply, "^x04[^x03%s^x04] ^x03%s^x01: %s", g_szRanks[ g_iPlyRank[ply] ], szName, szMsg );
+    client_print_color( 0, ply, "^x04[^x03%s^x04] ^x03%s^x01: %s", g_szPlyRank[ply], szName, szMsg );
     
     return PLUGIN_HANDLED;
 }
