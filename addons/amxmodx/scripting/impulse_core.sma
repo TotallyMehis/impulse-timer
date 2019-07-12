@@ -171,6 +171,7 @@ public plugin_init()
     register_forward( FM_ClientKill, "fwdClientKill" );
     
     // Events
+    register_message( get_user_msgid( "VGUIMenu" ), "eventVGUIMenu" );
     imp_onroundrestart( "eventRoundStart" );
 
 
@@ -359,6 +360,8 @@ public client_putinserver( ply )
     if ( !is_user_bot( ply ) )
     {
         set_task( 3.0, "taskSetPlyCvars", get_user_userid( ply ) );
+
+        cmdSpawn( ply );
     }
 }
 
@@ -398,6 +401,19 @@ public queryFpsMax( ply, const szCvar[], const szValue[] )
             sendResetFwd( ply );
         }
     }
+}
+
+public eventVGUIMenu( msg_id, msg_dest, msg_entity )
+{
+    new menuid = get_msg_arg_int( 1 );
+
+    if (menuid == 2 // Team select
+    ||  menuid == 27) // Model select
+    {
+        return PLUGIN_HANDLED;
+    }
+
+    return PLUGIN_CONTINUE;
 }
 
 public taskMapStuff()
