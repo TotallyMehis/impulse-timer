@@ -381,7 +381,7 @@ stock hideHideMenu( ply )
     show_menu( ply, 0, HIDEMENU_NAME );
 }
 
-public _impulse_gethideflags(id, num)
+public _impulse_gethideflags( id, num )
 {
 	new ply = get_param( 1 );
 	return g_fPlyHideFlags[ply];

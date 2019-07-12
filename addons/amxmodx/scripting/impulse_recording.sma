@@ -97,14 +97,14 @@ public plugin_init()
     set_pev( g_iRecEnt, pev_nextthink, get_gametime() + 1.5 );
 }
 
-public bool:_impulse_isrecordbot(id, num)
+public bool:_impulse_isrecordbot( id, num )
 {
     new ply = get_param( 1 );
 
     return g_iRecBot == ply;
 }
 
-public bool:_impulse_getrecordinginfo(id, num)
+public bool:_impulse_getrecordinginfo( id, num )
 {
     new ply = get_param( 1 );
 

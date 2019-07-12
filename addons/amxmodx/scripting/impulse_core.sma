@@ -202,23 +202,23 @@ public impulse_on_reset( ply )
     g_flPlyStartTime[ply] = INVALID_TIME;
 }
 
-public Handle:_impulse_getdb(id, num)
+public Handle:_impulse_getdb( id, num )
 {
     return g_DB_Tuple;
 }
 
-public _impulse_getplyid(id, num)
+public _impulse_getplyid( id, num )
 {
     new ply = get_param( 1 );
     return g_iPlyId[ply];
 }
 
-public _impulse_getmapid(id, num)
+public _impulse_getmapid( id, num )
 {
     return g_iMapId;
 }
 
-public Float:_impulse_gettime(id, num)
+public Float:_impulse_gettime( id, num )
 {
     new ply = get_param( 1 );
     if ( g_flPlyStartTime[ply] == INVALID_TIME )
@@ -227,13 +227,13 @@ public Float:_impulse_gettime(id, num)
     return get_gametime() - g_flPlyStartTime[ply];
 }
 
-public Float:_impulse_getpbtime(id, num)
+public Float:_impulse_getpbtime( id, num )
 {
     new ply = get_param( 1 );
     return g_flPlyBestTime[ply];
 }
 
-public Float:_impulse_getsrtime(id, num)
+public Float:_impulse_getsrtime( id, num )
 {
     return g_flMapBestTime;
 }
