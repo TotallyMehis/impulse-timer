@@ -14,6 +14,8 @@
 
 #define HUD_TIMER_INTERVAL  0.1
 
+#define HIDEMENU_NAME       "HideMenu"
+
 
 
 new g_fPlyHideFlags[IMP_MAXPLAYERS];
@@ -61,7 +63,7 @@ public plugin_init()
     // Triggers
     imp_registertriggers( "hidemenu", "cmdHideMenu" );
 
-    register_menucmd( register_menuid( "HideMenu" ), g_fHideMenuFlags, "menuHide" );
+    register_menucmd( register_menuid( HIDEMENU_NAME ), g_fHideMenuFlags, "menuHide" );
 
 
 
@@ -264,7 +266,7 @@ public cmdHideMenu( ply )
     
     len += format( szMenu[len], sizeof( szMenu ) - len, "\r0. \yExit" );
     
-    show_menu( ply, g_fHideMenuFlags, szMenu, -1, "HideMenu" );
+    show_menu( ply, g_fHideMenuFlags, szMenu, -1, HIDEMENU_NAME );
     
     return PLUGIN_HANDLED;
 }
@@ -300,6 +302,8 @@ public cmdChangeFOV( ply )
 
 public menuHide( ply, key )
 {
+    new bool:bShow = true;
+
     switch ( key )
     {
         case 0 :
@@ -331,8 +335,17 @@ public menuHide( ply, key )
         }
         default :
         {
-            hideHideMenu( ply );
+            bShow = false;
         }
+    }
+
+    if ( bShow )
+    {
+        showHideMenu( ply );
+    }
+    else
+    {
+        //hideHideMenu( ply );
     }
 }
 
@@ -360,12 +373,12 @@ stock getSpectatorTarget( ply )
 
 stock showHideMenu( ply )
 {
-    show_menu( ply, -1, "HideMenu" );
+    cmdHideMenu( ply );
 }
 
 stock hideHideMenu( ply )
 {
-    show_menu( ply, 0, "HideMenu" );
+    show_menu( ply, 0, HIDEMENU_NAME );
 }
 
 public _impulse_gethideflags(id, num)
