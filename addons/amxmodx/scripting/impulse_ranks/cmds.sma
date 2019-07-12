@@ -16,3 +16,30 @@ public cmdSay( ply )
     
     return PLUGIN_HANDLED;
 }
+
+public cmdShowRank( ply )
+{
+    new szNextRank[MAX_RANK_LENGTH];
+
+    
+    new currank = g_iPlyRank[ply];
+    if ( currank == -1 ) return PLUGIN_HANDLED;
+    
+    new nextrank = (currank+1) < ArraySize( g_arrRanks ) ? (currank+1) : -1;
+    if ( nextrank == -1 ) return PLUGIN_HANDLED;
+
+
+    getRankName( nextrank, szNextRank, sizeof( szNextRank ) );
+
+    new plypoints = g_iPlyRankPoints[ply];
+    new pointsleft = getRankPoints( nextrank ) - plypoints;
+
+    client_print_color( ply, ply,
+        CHAT_PREFIX + "You have ^x04%i^x01 points, '^x03%s^x01' rank in ^x04%i^x01 points!",
+        plypoints,
+        szNextRank,
+        pointsleft );
+
+    
+    return PLUGIN_HANDLED;
+}

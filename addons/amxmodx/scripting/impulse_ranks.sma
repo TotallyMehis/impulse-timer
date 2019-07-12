@@ -57,6 +57,11 @@ public plugin_init()
     parseRanks();
 
 
+    // Commands
+    imp_registertriggers( "showrank", "cmdShowRank" );
+    
+
+
     set_task( 1.0, "taskRegisterSay" );
 }
 
