@@ -110,7 +110,7 @@ public cbRecords( failState, Handle:hQuery, szError[], iError, data[], size, Flo
     if ( failState ) return;
     
     
-    new ply = timer_getuserbyuserid( data[0] );
+    new ply = imp_getuserbyuserid( data[0] );
     if ( !is_user_connected( ply ) ) return;
     
 
@@ -134,7 +134,7 @@ public cbRecords( failState, Handle:hQuery, szError[], iError, data[], size, Flo
         field = SQL_FieldNameToNum( hQuery, "time" );
         SQL_ReadResult( hQuery, field, flTime );
         
-        timer_formatSeconds( flTime, szFormatted[plys], sizeof( szFormatted[] ), true );
+        imp_formatseconds( flTime, szFormatted[plys], sizeof( szFormatted[] ), true );
         
         
         field = SQL_FieldNameToNum( hQuery, "steamid" );

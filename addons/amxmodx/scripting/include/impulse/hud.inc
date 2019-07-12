@@ -18,4 +18,4 @@
 
 
 
-native timer_gethideflags( ply );
+native impulse_gethideflags( ply );

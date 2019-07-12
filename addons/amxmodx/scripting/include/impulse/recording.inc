@@ -10,5 +10,5 @@
 #endif
 
 
-native bool:timer_isrecordbot( ply );
-native bool:timer_getrecordinginfo( ply, &Float:rectime, recname[], recname_length );
+native bool:impulse_isrecordbot( ply );
+native bool:impulse_getrecordinginfo( ply, &Float:rectime, recname[], recname_length );

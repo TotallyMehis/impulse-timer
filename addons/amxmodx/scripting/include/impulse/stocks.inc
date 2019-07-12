@@ -4,20 +4,20 @@
 #define _impulse_stocks_included
 
 
-stock timer_onroundrestart( const function[] )
+stock imp_onroundrestart( const function[] )
 {
     register_event( "HLTV", function, "a", "1=0", "2=0" );
 }
 
 
 static Float:_vecVel[3];
-stock Float:timer_getspeed2d( ply )
+stock Float:imp_getspeed2d( ply )
 {
     pev( ply, pev_velocity, _vecVel );
     return floatsqroot( _vecVel[0] * _vecVel[0] + _vecVel[1] * _vecVel[1] );
 }
 
-stock Float:timer_getspeed3d( ply )
+stock Float:imp_getspeed3d( ply )
 {
     pev( ply, pev_velocity, _vecVel );
     return floatsqroot( _vecVel[0] * _vecVel[0] + _vecVel[1] * _vecVel[1] + _vecVel[2] * _vecVel[2] );
@@ -25,7 +25,7 @@ stock Float:timer_getspeed3d( ply )
 
 static _szMins[3];
 static _szSecs[6];
-stock timer_formatSeconds( const Float:in_secs, szTarget[], nLength, bool:bIsDeci = false )
+stock imp_formatseconds( const Float:in_secs, szTarget[], nLength, bool:bIsDeci = false )
 {
     new Float:secs = 0.0;
     new iMins = 0;
@@ -45,7 +45,7 @@ stock timer_formatSeconds( const Float:in_secs, szTarget[], nLength, bool:bIsDec
     formatex( szTarget, nLength, "%s:%s", _szMins, _szSecs );
 }
 
-stock timer_getsafemapname( out[], out_len )
+stock imp_getsafemapname( out[], out_len )
 {
     get_mapname( out, out_len );
     
@@ -53,7 +53,7 @@ stock timer_getsafemapname( out[], out_len )
     for ( new i = 0; i < len; i++ ) char_to_lower( out[i] );
 }
 
-stock timer_getuserbyuserid( userid )
+stock imp_getuserbyuserid( userid )
 {
     return find_player( "k", userid );
 }

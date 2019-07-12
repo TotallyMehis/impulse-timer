@@ -60,14 +60,14 @@ public plugin_init()
     set_task( 1.0, "taskRegisterSay" );
 }
 
-public _timer_getrankpoints( id, num )
+public _impulse_getrankpoints( id, num )
 {
     new ply = get_param( 1 );
 
     return g_iPlyRankPoints[ply];
 }
 
-public bool:_timer_getrank( id, num )
+public bool:_impulse_getrank( id, num )
 {
     new ply = get_param( 1 );
 
@@ -92,8 +92,8 @@ public plugin_natives()
     register_library( "impulse_ranks" );
 
 
-    register_native( "timer_getrankpoints", "_timer_getrankpoints" );
-    register_native( "timer_getrank", "_timer_getrank" );
+    register_native( "impulse_getrankpoints", "_impulse_getrankpoints" );
+    register_native( "impulse_getrank", "_impulse_getrank" );
 }
 
 public client_connect( ply )
@@ -104,14 +104,14 @@ public client_connect( ply )
     g_iPlyRankPoints[ply] = INVALID_RANK_POINTS;
 }
 
-public timer_on_ply_id( ply, plyid )
+public impulse_on_ply_id( ply, plyid )
 {
     dbGetRank(ply);
 }
 
-public timer_on_end_post( ply, Float:time )
+public impulse_on_end_post( ply, Float:time )
 {
-    new Float: pbtime = timer_getpbtime( ply );
+    new Float: pbtime = impulse_getpbtime( ply );
 
     new bool:bFirstTime = pbtime == INVALID_TIME;
 

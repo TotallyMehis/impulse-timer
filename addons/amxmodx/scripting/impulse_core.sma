@@ -96,13 +96,13 @@ public plugin_init()
 
 
     // Forwards
-    g_fwdTimerStartPost = CreateMultiForward( "timer_on_start_post", ET_IGNORE, FP_CELL );
-    g_fwdTimerReset = CreateMultiForward( "timer_on_reset", ET_IGNORE, FP_CELL );
-    g_fwdTimerEndPost = CreateMultiForward( "timer_on_end_post", ET_IGNORE, FP_CELL, FP_FLOAT );
+    g_fwdTimerStartPost = CreateMultiForward( "impulse_on_start_post", ET_IGNORE, FP_CELL );
+    g_fwdTimerReset = CreateMultiForward( "impulse_on_reset", ET_IGNORE, FP_CELL );
+    g_fwdTimerEndPost = CreateMultiForward( "impulse_on_end_post", ET_IGNORE, FP_CELL, FP_FLOAT );
 
-    g_fwdPlyIdPost = CreateMultiForward( "timer_on_ply_id", ET_IGNORE, FP_CELL, FP_CELL );
+    g_fwdPlyIdPost = CreateMultiForward( "impulse_on_ply_id", ET_IGNORE, FP_CELL, FP_CELL );
 
-    g_fwdSendSpec = CreateMultiForward( "timer_on_send_spec", ET_IGNORE, FP_CELL );
+    g_fwdSendSpec = CreateMultiForward( "impulse_on_send_spec", ET_IGNORE, FP_CELL );
 
 
     // Misc.
@@ -115,7 +115,7 @@ public plugin_init()
         set_fail_state( CONSOLE_PREFIX + "Couldn't find pointer to sv_airaccelerate!" );
     }
 
-    timer_getsafemapname( g_szCurMap, sizeof( g_szCurMap ) );
+    imp_getsafemapname( g_szCurMap, sizeof( g_szCurMap ) );
     
 
 
@@ -163,7 +163,7 @@ public plugin_init()
     register_clcmd( "say spectate", szCmdSpectate );
     register_clcmd( "say /spec", szCmdSpectate );
     register_clcmd( "say spec", szCmdSpectate );
-    
+
     // Blocked commands
     new const szCmdBlocked[] = "cmdBlocked";
     register_clcmd( "radio1", szCmdBlocked );
@@ -203,7 +203,7 @@ public plugin_init()
     register_forward( FM_ClientKill, "fwdClientKill" );
     
     // Events
-    timer_onroundrestart( "eventRoundStart" );
+    imp_onroundrestart( "eventRoundStart" );
 
 
     
@@ -222,35 +222,35 @@ public plugin_end()
     SQL_FreeHandle( g_DB_Tuple );
 }
 
-public timer_on_ply_id( ply, plyid )
+public impulse_on_ply_id( ply, plyid )
 {
     dbUpdateDatabase( ply );
 
     dbGetPlyTime( ply );
 }
 
-public timer_on_reset( ply )
+public impulse_on_reset( ply )
 {
     g_flPlyStartTime[ply] = INVALID_TIME;
 }
 
-public Handle:_timer_getdb(id, num)
+public Handle:_impulse_getdb(id, num)
 {
     return g_DB_Tuple;
 }
 
-public _timer_getplyid(id, num)
+public _impulse_getplyid(id, num)
 {
     new ply = get_param( 1 );
     return g_iPlyId[ply];
 }
 
-public _timer_getmapid(id, num)
+public _impulse_getmapid(id, num)
 {
     return g_iMapId;
 }
 
-public Float:_timer_gettime(id, num)
+public Float:_impulse_gettime(id, num)
 {
     new ply = get_param( 1 );
     if ( g_flPlyStartTime[ply] == INVALID_TIME )
@@ -259,13 +259,13 @@ public Float:_timer_gettime(id, num)
     return get_gametime() - g_flPlyStartTime[ply];
 }
 
-public Float:_timer_getpbtime(id, num)
+public Float:_impulse_getpbtime(id, num)
 {
     new ply = get_param( 1 );
     return g_flPlyBestTime[ply];
 }
 
-public Float:_timer_getsrtime(id, num)
+public Float:_impulse_getsrtime(id, num)
 {
     return g_flMapBestTime;
 }
@@ -274,14 +274,14 @@ public plugin_natives()
 {
     register_library( "impulse_core" );
 
-    register_native( "timer_getdb", "_timer_getdb" );
+    register_native( "impulse_getdb", "_impulse_getdb" );
 
-    register_native( "timer_getplyid", "_timer_getplyid" );
-    register_native( "timer_getmapid", "_timer_getmapid" );
+    register_native( "impulse_getplyid", "_impulse_getplyid" );
+    register_native( "impulse_getmapid", "_impulse_getmapid" );
 
-    register_native( "timer_gettime", "_timer_gettime" );
-    register_native( "timer_getpbtime", "_timer_getpbtime" );
-    register_native( "timer_getsrtime", "_timer_getsrtime" );
+    register_native( "impulse_gettime", "_impulse_gettime" );
+    register_native( "impulse_getpbtime", "_impulse_getpbtime" );
+    register_native( "impulse_getsrtime", "_impulse_getsrtime" );
 }
 
 public eventRoundStart()
@@ -396,7 +396,7 @@ public client_putinserver( ply )
 
 public taskSetPlyCvars( userid )
 {
-    new ply = timer_getuserbyuserid( userid );
+    new ply = imp_getuserbyuserid( userid );
     if ( ply && is_user_connected( ply ) )
     {
         static ping, loss;
@@ -636,7 +636,7 @@ public fwdPlayerPostThink( ply )
 stock on_press_start( ply )
 {
     // Get true speed
-    new Float:spd = timer_getspeed3d( ply );
+    new Float:spd = imp_getspeed3d( ply );
     new Float:maxspd = MAX_PRESPEED;
 
     if ( spd > maxspd )
@@ -687,7 +687,7 @@ stock on_press_end( ply )
     
 
     static szFormatted[9]; // "XX:XX.XX"
-    timer_formatSeconds( flNewTime, szFormatted, sizeof( szFormatted ), true );
+    imp_formatseconds( flNewTime, szFormatted, sizeof( szFormatted ), true );
 
     
     if ( bIsBest )

@@ -86,7 +86,7 @@ public plugin_init()
     g_iMaxPlys = get_maxplayers();
     g_pServerTicRate = get_cvar_pointer( "sys_ticrate" );
 
-    timer_getsafemapname( g_szCurMap, sizeof( g_szCurMap ) );
+    imp_getsafemapname( g_szCurMap, sizeof( g_szCurMap ) );
 
 
     // Entities
@@ -97,14 +97,14 @@ public plugin_init()
     set_pev( g_iRecEnt, pev_nextthink, get_gametime() + 1.5 );
 }
 
-public bool:_timer_isrecordbot(id, num)
+public bool:_impulse_isrecordbot(id, num)
 {
     new ply = get_param( 1 );
 
     return g_iRecBot == ply;
 }
 
-public bool:_timer_getrecordinginfo(id, num)
+public bool:_impulse_getrecordinginfo(id, num)
 {
     new ply = get_param( 1 );
 
@@ -121,8 +121,8 @@ public plugin_natives()
 {
     register_library( "impulse_recording" );
 
-    register_native( "timer_isrecordbot", "_timer_isrecordbot" );
-    register_native( "timer_getrecordinginfo", "_timer_getrecordinginfo" );
+    register_native( "impulse_isrecordbot", "_impulse_isrecordbot" );
+    register_native( "impulse_getrecordinginfo", "_impulse_getrecordinginfo" );
 }
 
 public plugin_cfg()
@@ -159,22 +159,22 @@ public client_disconnected( ply )
     g_bPlyRecording[ply] = false;
 }
 
-public timer_on_start_post( ply )
+public impulse_on_start_post( ply )
 {
     initPlyRecording( ply );
     g_iPlyTick[ply] = 0;
     g_bPlyRecording[ply] = true;
 }
 
-public timer_on_reset( ply )
+public impulse_on_reset( ply )
 {
     g_bPlyRecording[ply] = false;
     g_iPlyTick[ply] = 0;
 }
 
-public timer_on_end_post( ply, Float:time )
+public impulse_on_end_post( ply, Float:time )
 {
-    new Float:prevbest = timer_getsrtime();
+    new Float:prevbest = impulse_getsrtime();
 
     new bool:bIsBest = prevbest == INVALID_TIME || time < prevbest;
 
@@ -191,7 +191,7 @@ public timer_on_end_post( ply, Float:time )
     }
 }
 
-public timer_on_send_spec( ply )
+public impulse_on_send_spec( ply )
 {
     if ( hasRecordBot() )
     {
@@ -342,7 +342,7 @@ public CopyArray( const any:oldArray[], any:newArray[], size )
 
 public taskPlaybackRestart( userid )
 {
-    new ply = timer_getuserbyuserid( userid );
+    new ply = imp_getuserbyuserid( userid );
     if ( ply && is_user_bot( ply ) )
     {
         g_bPlyMimicing[ply] = true;
@@ -634,7 +634,7 @@ stock setRecordBotName()
     {
         
         new szFormatted[32];
-        timer_formatSeconds( g_flRecTime, szFormatted, sizeof( szFormatted ) );
+        imp_formatseconds( g_flRecTime, szFormatted, sizeof( szFormatted ) );
 
         
         formatex( szName, sizeof( szName ), "SR: %s | %s", szFormatted, g_szRecName );

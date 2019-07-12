@@ -16,20 +16,20 @@
 
 
 
-forward timer_on_start_post( ply );
-forward timer_on_reset( ply );
-forward timer_on_end_post( ply, Float:time );
+forward impulse_on_start_post( ply );
+forward impulse_on_reset( ply );
+forward impulse_on_end_post( ply, Float:time );
 
-forward timer_on_ply_id( ply, plyid );
+forward impulse_on_ply_id( ply, plyid );
 
-forward timer_on_send_spec( ply );
+forward impulse_on_send_spec( ply );
 
 
-native Handle:timer_getdb();
-native timer_getplyid( ply );
-native timer_getmapid();
+native Handle:impulse_getdb();
+native impulse_getplyid( ply );
+native impulse_getmapid();
 
-native Float:timer_gettime( ply );
-native Float:timer_getpbtime( ply );
+native Float:impulse_gettime( ply );
+native Float:impulse_getpbtime( ply );
 
-native Float:timer_getsrtime();
+native Float:impulse_getsrtime();

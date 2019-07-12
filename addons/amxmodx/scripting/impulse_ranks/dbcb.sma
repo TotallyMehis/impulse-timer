@@ -17,8 +17,8 @@ public cbPlyRank( failState, Handle:hQuery, szError[], iError, data[], size, Flo
         server_print( CONSOLE_PREFIX + "Player %i had no rank points, making one for them!", ply );
         
 
-        formatex( g_DB_szQuery, sizeof( g_DB_szQuery ), "INSERT INTO " + DB_TABLE_RANKS + " (uid) VALUES (%i)", timer_getplyid( ply ) );
-        SQL_ThreadQuery( timer_getdb(), "cbEmpty", g_DB_szQuery );
+        formatex( g_DB_szQuery, sizeof( g_DB_szQuery ), "INSERT INTO " + DB_TABLE_RANKS + " (uid) VALUES (%i)", impulse_getplyid( ply ) );
+        SQL_ThreadQuery( impulse_getdb(), "cbEmpty", g_DB_szQuery );
         
 
         g_iPlyRankPoints[ply] = 0;

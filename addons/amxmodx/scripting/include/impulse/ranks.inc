@@ -13,6 +13,6 @@
 #define INVALID_RANK_POINTS         -1
 
 
-native timer_getrankpoints( ply );
-native timer_getrank( ply, rank[], rank_length );
+native impulse_getrankpoints( ply );
+native impulse_getrank( ply, rank[], rank_length );
 

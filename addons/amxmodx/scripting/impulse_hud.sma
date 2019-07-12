@@ -48,7 +48,7 @@ public plugin_init()
 
     // Events
     register_event( "CurWeapon", "eventCurWeapon", "b", "1=1" );
-    timer_onroundrestart( "eventRoundStart" );
+    imp_onroundrestart( "eventRoundStart" );
 
 
     // Commands
@@ -95,7 +95,7 @@ public plugin_natives()
 {
     register_library( "impulse_hud" );
 
-    register_native( "timer_gethideflags", "_timer_gethideflags" );
+    register_native( "impulse_gethideflags", "_impulse_gethideflags" );
 }
 
 public client_putinserver( ply )
@@ -200,13 +200,13 @@ stock handlePlyTimers()
 
         
         
-        if ( timer_isrecordbot( target ) )
+        if ( impulse_isrecordbot( target ) )
         {
-            timer_getrecordinginfo( target, time, szRecName, sizeof( szRecName ) );
+            impulse_getrecordinginfo( target, time, szRecName, sizeof( szRecName ) );
 
             if ( time != INVALID_TIME )
             {
-                timer_formatSeconds( time, szFormatted, sizeof( szFormatted ) );
+                imp_formatseconds( time, szFormatted, sizeof( szFormatted ) );
             }
             else
             {
@@ -224,7 +224,7 @@ stock handlePlyTimers()
         
         if ( !(hideflags & HIDEHUD_PB) )
         {
-            time = timer_getpbtime( target );
+            time = impulse_getpbtime( target );
 
             if ( time == INVALID_TIME )
             {
@@ -232,11 +232,11 @@ stock handlePlyTimers()
             }
             else
             {
-                timer_formatSeconds( time, szFormatted, sizeof( szFormatted ), true );
+                imp_formatseconds( time, szFormatted, sizeof( szFormatted ), true );
             }
 
 
-            timer_getrank( target, szRank, sizeof( szRank ) );
+            impulse_getrank( target, szRank, sizeof( szRank ) );
             
 
             set_hudmessage( 255, 255, 255, -1.0, 0.01, 0, 0.0, 0.1, 0.02, 0.02 );
@@ -245,18 +245,18 @@ stock handlePlyTimers()
         
         if ( !(hideflags & HIDEHUD_TIME) )
         {
-            time = timer_gettime( target );
+            time = impulse_gettime( target );
             
             set_hudmessage( 255, 255, 255, -1.0, 0.7, 0, 0.0, 0.1, 0.02, 0.02 );
             
             if ( time == INVALID_TIME )
             {
-                show_hudmessage( ply, "Press Start Button^n%3.0f ups", timer_getspeed2d( target ) );
+                show_hudmessage( ply, "Press Start Button^n%3.0f ups", imp_getspeed2d( target ) );
             }
             else
             {
-                timer_formatSeconds( time, szFormatted, sizeof( szFormatted ) );
-                show_hudmessage( ply, "%s^n%3.0f ups", szFormatted, timer_getspeed2d( target ) );
+                imp_formatseconds( time, szFormatted, sizeof( szFormatted ) );
+                show_hudmessage( ply, "%s^n%3.0f ups", szFormatted, imp_getspeed2d( target ) );
             }
         }
     }    
@@ -381,7 +381,7 @@ stock hideHideMenu( ply )
     show_menu( ply, 0, "HideMenu" );
 }
 
-public _timer_gethideflags(id, num)
+public _impulse_gethideflags(id, num)
 {
 	new ply = get_param( 1 );
 	return g_fPlyHideFlags[ply];
