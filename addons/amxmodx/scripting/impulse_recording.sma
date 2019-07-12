@@ -147,13 +147,7 @@ public plugin_cfg()
     if ( g_iRecordingMaxLen <= 0 ) g_iRecordingMaxLen = MAX_RECORDING_LENGTH;
 }
 
-public client_putinserver( ply )
-{
-    g_bPlyMimicing[ply] = false;
-    g_bPlyRecording[ply] = false;
-}
-
-public client_disconnected( ply )
+public client_connect( ply )
 {
     g_bPlyMimicing[ply] = false;
     g_bPlyRecording[ply] = false;

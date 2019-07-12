@@ -87,7 +87,7 @@ public plugin_natives()
     register_native( "impulse_gethideflags", "_impulse_gethideflags" );
 }
 
-public client_putinserver( ply )
+public client_connect( ply )
 {
     g_fPlyHideFlags[ply] = 0;
 }
