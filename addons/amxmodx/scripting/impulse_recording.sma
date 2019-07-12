@@ -112,7 +112,7 @@ public bool:_impulse_getrecordinginfo(id, num)
 
 
     new len = get_param( 4 );
-    set_string( 3, g_szRecName, min( len, sizeof( g_szRecName ) ) );
+    set_string( 3, g_szRecName, len );
 
     return g_iRecBot == ply;
 }
