@@ -4,6 +4,9 @@
 #define _impulse_stocks_included
 
 
+#define SAYTRIGGER_FILE             "/configs/impulse_saytriggers.ini"
+
+
 stock imp_onroundrestart( const function[] )
 {
     register_event( "HLTV", function, "a", "1=0", "2=0" );
@@ -56,4 +59,77 @@ stock imp_getsafemapname( out[], out_len )
 stock imp_getuserbyuserid( userid )
 {
     return find_player( "k", userid );
+}
+
+// Register say triggers (ie. 'say /spawn') from file per section name.
+stock imp_registertriggers( const section[], const function[] )
+{
+    new szFile[256];
+    
+    get_basedir( szFile, sizeof( szFile ) );
+    add( szFile, sizeof( szFile ), SAYTRIGGER_FILE );
+    if ( !file_exists( szFile ) )
+    {
+        return -1;
+    }
+
+
+    new Array:arr = ArrayCreate( 64 );
+    ArrayPushString( arr, section );
+
+    new INIParser:parser = INI_CreateParser();
+
+    INI_SetReaders( parser, "_imp_registertriggers_kv", "_imp_registertriggers_ns" );
+    INI_ParseFile( parser, szFile, .data = arr );
+
+    INI_DestroyParser( parser );
+
+
+    new szTrigger[128];
+    new szOut[128];
+
+
+    new len = ArraySize( arr );
+    for ( new i = 2; i < len; i++ )
+    {
+        ArrayGetString( arr, i, szTrigger, sizeof( szTrigger ) );
+
+        formatex( szOut, sizeof( szOut ), "say %s", szTrigger );
+
+        register_clcmd( szOut, function );
+    }
+
+
+    ArrayDestroy( arr );
+
+    return len - 1;
+}
+
+public bool:_imp_registertriggers_ns( INIParser:handle, const section[], bool:invalid_tokens, bool:close_bracket, bool:extra_tokens, curtok, Array:arr )
+{
+    // We wrote to this array, which means we found the right section.
+    // New section, so break this.
+    if ( ArraySize( arr ) > 1 ) return false;
+
+
+    new mysection[32];
+    ArrayGetString( arr, 0, mysection, sizeof( mysection ) );
+
+    if ( equali( mysection, section ) )
+    {
+        // Length > 1 means we're in the correct section.
+        ArrayPushString( arr, "" );
+    }
+
+    return true;
+}
+
+public bool:_imp_registertriggers_kv( INIParser:handle, const key[], const value[], bool:invalid_tokens, bool:equal_token, bool:quotes, curtok, Array:arr )
+{
+    if ( ArraySize( arr ) > 1 )
+    {
+        ArrayPushString( arr, key );
+    }
+
+    return true;
 }

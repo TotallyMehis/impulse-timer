@@ -125,44 +125,12 @@ public plugin_init()
 
 
     // Triggers
-    new const szCmdSpawn[] = "cmdSpawn";
-    register_clcmd( "say spawn", szCmdSpawn );
-    register_clcmd( "say /spawn", szCmdSpawn );
-    register_clcmd( "say respawn", szCmdSpawn );
-    register_clcmd( "say /respawn", szCmdSpawn );
-    register_clcmd( "say start", szCmdSpawn );
-    register_clcmd( "say /start", szCmdSpawn );
-    register_clcmd( "say /restart", szCmdSpawn);
-    register_clcmd( "say restart", szCmdSpawn );
-    
-    new const szCmdShowRecords[] = "cmdShowRecords";
-    register_clcmd( "say /wr", szCmdShowRecords );
-    register_clcmd( "say wr", szCmdShowRecords );
-    register_clcmd( "say /records", szCmdShowRecords );
-    register_clcmd( "say records", szCmdShowRecords );
-    register_clcmd( "say /record", szCmdShowRecords );
-    register_clcmd( "say record", szCmdShowRecords );
-    
-    new const szCmdShowHelp[] = "cmdShowHelp";
-    register_clcmd( "say /commands", szCmdShowHelp );
-    register_clcmd( "say commands", szCmdShowHelp );
-    register_clcmd( "say /help", szCmdShowHelp );
-    register_clcmd( "say help", szCmdShowHelp );
-    
-    /*register_clcmd( "+cjump", "cmdPlyJumpOn" );
-    /register_clcmd( "-cjump", "cmdPlyJumpOff" );*/
-    
-    new const szCmdNoclip[] = "cmdNoclip";
-    register_clcmd( "say /noclip", szCmdNoclip );
-    register_clcmd( "say noclip", szCmdNoclip );
-    register_clcmd( "say /fly", szCmdNoclip );
-    register_clcmd( "say fly", szCmdNoclip );
-    
-    new const szCmdSpectate[] = "cmdSpectate";
-    register_clcmd( "say /spectate", szCmdSpectate );
-    register_clcmd( "say spectate", szCmdSpectate );
-    register_clcmd( "say /spec", szCmdSpectate );
-    register_clcmd( "say spec", szCmdSpectate );
+    imp_registertriggers( "restart", "cmdSpawn" );
+    imp_registertriggers( "recordsmenu", "cmdShowRecords" );
+    imp_registertriggers( "commands", "cmdShowHelp" );
+    imp_registertriggers( "noclip", "cmdNoclip" );
+    imp_registertriggers( "spectate", "cmdSpectate" );
+
 
     // Blocked commands
     new const szCmdBlocked[] = "cmdBlocked";

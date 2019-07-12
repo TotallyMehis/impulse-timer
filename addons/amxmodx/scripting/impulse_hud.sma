@@ -1,4 +1,5 @@
 #include <amxmodx>
+#include <amxmisc>
 #include <fakemeta>
 
 #include <impulse/defs>
@@ -55,24 +56,10 @@ public plugin_init()
     new const szCmdChangeFOV[] = "cmdChangeFOV";
     register_clcmd( "fov", szCmdChangeFOV );
     register_clcmd( "fieldofview", szCmdChangeFOV );
+    
 
-    new const szCmdHideMenu[] = "cmdHideMenu";
-    register_clcmd( "say /hide", szCmdHideMenu );
-    register_clcmd( "say hide", szCmdHideMenu );
-    register_clcmd( "say /players", szCmdHideMenu );
-    register_clcmd( "say players", szCmdHideMenu );
-    register_clcmd( "say /hideplayers", szCmdHideMenu );
-    register_clcmd( "say hideplayers", szCmdHideMenu );
-    register_clcmd( "say /water", szCmdHideMenu );
-    register_clcmd( "say water", szCmdHideMenu );
-    register_clcmd( "say /hidewater", szCmdHideMenu );
-    register_clcmd( "say hidewater", szCmdHideMenu );
-    register_clcmd( "say /viewmodel", szCmdHideMenu );
-    register_clcmd( "say viewmodel", szCmdHideMenu );
-    register_clcmd( "say /vm", szCmdHideMenu );
-    register_clcmd( "say vm", szCmdHideMenu );
-    register_clcmd( "say /hud", szCmdHideMenu );
-    register_clcmd( "say hud", szCmdHideMenu );
+    // Triggers
+    imp_registertriggers( "hidemenu", "cmdHideMenu" );
 
     register_menucmd( register_menuid( "HideMenu" ), g_fHideMenuFlags, "menuHide" );
 
