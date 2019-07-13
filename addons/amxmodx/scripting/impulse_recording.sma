@@ -171,9 +171,10 @@ public impulse_on_end_post( ply, Float:time )
     new Float:prevbest = impulse_getsrtime();
 
     new bool:bIsBest = prevbest == INVALID_TIME || time < prevbest;
+    new bool:bRecordingExists = g_ArrBest != Invalid_Array && ArraySize( g_ArrBest ) > 0;
 
     // Assign the record to a bot.
-    if ( g_bPlyRecording[ply] && bIsBest )
+    if ( g_bPlyRecording[ply] && (bIsBest || !bRecordingExists) )
     {
         server_print( CONSOLE_PREFIX + "Saving new record recording %i!", ply );
 
