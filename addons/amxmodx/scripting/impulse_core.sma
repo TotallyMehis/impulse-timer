@@ -361,6 +361,33 @@ public client_putinserver( ply )
     {
         set_task( 3.0, "taskSetPlyCvars", get_user_userid( ply ) );
 
+        set_task( 1.0, "taskSpawnPly", get_user_userid( ply ) );
+    }
+}
+
+public taskSpawnPly( userid )
+{
+    new ply = imp_getuserbyuserid( userid );
+    if ( ply )
+    {
+        if ( is_user_connected( ply ) )
+        {
+            set_pdata_int( ply, 121, _:CS_STATE_GET_INTO_GAME );
+            set_task( 0.1, "taskSpawnPly2", userid );
+        }
+        else
+        {
+            // Wait until they're fully connected.
+            set_task( 0.1, "taskSpawnPly", userid );
+        }
+    }
+}
+
+public taskSpawnPly2( userid )
+{
+    new ply = imp_getuserbyuserid( userid );
+    if ( ply )
+    {
         cmdSpawn( ply );
     }
 }
