@@ -712,7 +712,7 @@ stock on_press_end( ply )
     // Finally, update SQL!
     if ( bFirstTime || bBeatOwn )
     {
-        dbInsertTime( ply, flNewTime, bBeatOwn );
+        dbInsertTime( ply, flNewTime, !bBeatOwn );
 
         g_flPlyBestTime[ply] = flNewTime;
     }
