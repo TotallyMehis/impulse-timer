@@ -90,7 +90,7 @@ stock dbGetPlyId( ply )
     SQL_ThreadQuery( g_DB_Tuple, "cbPlyId", g_DB_szQuery, data, sizeof( data ) );
 }
 
-stock dbInsertTime( ply, Float:time, isNew )
+stock dbInsertTime( ply, Float:time, bool:isNew )
 {
     formatex( g_DB_szQuery, sizeof( g_DB_szQuery ),
         "%s INTO " + DB_TABLE_TIMES + " (plyid,mapid,time) VALUES (%i, %i, %f)",
