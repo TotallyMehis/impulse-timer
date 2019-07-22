@@ -9,12 +9,23 @@ public cmdSpawn( ply )
     if ( pev( ply, pev_deadflag ) != DEAD_NO )
     {
         ExecuteHam( Ham_CS_RoundRespawn, ply );
-        fm_give_item( ply, "weapon_knife" );
     }
     
     //set_pev( ply, pev_angles, g_vecNull );
     set_pev( ply, pev_origin, g_vecStartPos );
     set_pev( ply, pev_velocity, g_vecNull );
+
+
+    // Give weapons.
+    new num = 0;
+    new weapons[32];
+    get_user_weapons( ply, weapons, num );
+
+    if ( !num )
+    {
+        fm_give_item( ply, "weapon_knife" );
+        fm_give_item( ply, "weapon_usp" );
+    }
 
 
     sendResetFwd( ply );
