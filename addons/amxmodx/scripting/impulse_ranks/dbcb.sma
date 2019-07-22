@@ -1,11 +1,19 @@
 public cbEmpty( failState, Handle:hQuery, szError[], iError, data[], size, Float:queueTime )
 {
-
+    if ( failState )
+    {
+        server_print( CONSOLE_PREFIX + "SQL Query error %i: %s", iError, szError );
+        return;
+    }
 }
 
 public cbPlyRank( failState, Handle:hQuery, szError[], iError, data[], size, Float:queueTime )
 {
-    if ( failState ) return;
+    if ( failState )
+    {
+        server_print( CONSOLE_PREFIX + "SQL Query error %i: %s", iError, szError );
+        return;
+    }
     
     
     new ply = data[0];

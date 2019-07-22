@@ -1,11 +1,19 @@
 public cbEmpty( failState, Handle:hQuery, szError[], iError, data[], size, Float:queueTime )
 {
-
+    if ( failState )
+    {
+        server_print( CONSOLE_PREFIX + "SQL Query error %i: %s", iError, szError );
+        return;
+    }
 }
 
 public cbNewPlyId( failState, Handle:hQuery, szError[], iError, data[], size, Float:queueTime )
 {
-    if ( failState ) return;
+    if ( failState )
+    {
+        server_print( CONSOLE_PREFIX + "SQL Query error %i: %s", iError, szError );
+        return;
+    }
 
 
     new ply = data[0];
@@ -17,7 +25,11 @@ public cbNewPlyId( failState, Handle:hQuery, szError[], iError, data[], size, Fl
 
 public cbPlyId( failState, Handle:hQuery, szError[], iError, data[], size, Float:queueTime )
 {
-    if ( failState ) return;
+    if ( failState )
+    {
+        server_print( CONSOLE_PREFIX + "SQL Query error %i: %s", iError, szError );
+        return;
+    }
 
 
     new ply = data[0];
@@ -47,7 +59,11 @@ public cbPlyId( failState, Handle:hQuery, szError[], iError, data[], size, Float
 
 public cbMapId( failState, Handle:hQuery, szError[], iError, data[], size, Float:queueTime )
 {
-    if ( failState ) return;
+    if ( failState )
+    {
+        server_print( CONSOLE_PREFIX + "SQL Query error %i: %s", iError, szError );
+        return;
+    }
 
 
     // No map found, insert new one.
@@ -68,7 +84,11 @@ public cbMapId( failState, Handle:hQuery, szError[], iError, data[], size, Float
 
 public cbNewMapId( failState, Handle:hQuery, szError[], iError, data[], size, Float:queueTime )
 {
-    if ( failState ) return;
+    if ( failState )
+    {
+        server_print( CONSOLE_PREFIX + "SQL Query error %i: %s", iError, szError );
+        return;
+    }
 
 
     dbGetMapId();
@@ -76,7 +96,11 @@ public cbNewMapId( failState, Handle:hQuery, szError[], iError, data[], size, Fl
 
 public cbPlyData( failState, Handle:hQuery, szError[], iError, data[], size, Float:queueTime )
 {
-    if ( failState ) return;
+    if ( failState )
+    {
+        server_print( CONSOLE_PREFIX + "SQL Query error %i: %s", iError, szError );
+        return;
+    }
     
     
     new ply = data[0];
@@ -97,17 +121,29 @@ public cbPlyData( failState, Handle:hQuery, szError[], iError, data[], size, Flo
 
 public cbBestTime( failState, Handle:hQuery, szError[], iError, data[], size, Float:queueTime )
 {
-    if ( failState ) return;
+    if ( failState )
+    {
+        server_print( CONSOLE_PREFIX + "SQL Query error %i: %s", iError, szError );
+        return;
+    }
     
-    // No times found.
-    if ( !SQL_NumResults( hQuery ) ) return;
-    
-    SQL_ReadResult( hQuery, 0, g_flMapBestTime );
+
+    if ( SQL_NumResults( hQuery ) )
+    {
+        SQL_ReadResult( hQuery, 0, g_flMapBestTime );
+    }
+
+
+    server_print( CONSOLE_PREFIX + "Server best: %.1f", g_flMapBestTime );
 }
 
 public cbRecords( failState, Handle:hQuery, szError[], iError, data[], size, Float:queueTime )
 {
-    if ( failState ) return;
+    if ( failState )
+    {
+        server_print( CONSOLE_PREFIX + "SQL Query error %i: %s", iError, szError );
+        return;
+    }
     
     
     new ply = imp_getuserbyuserid( data[0] );
