@@ -55,7 +55,7 @@ stock dbInitMap()
 
 stock dbGetBestTime()
 {
-    formatex( g_DB_szQuery, sizeof( g_DB_szQuery ), "SELECT MIN(time) FROM " + DB_TABLE_MAPS + " WHERE mapid=%i", g_iMapId );
+    formatex( g_DB_szQuery, sizeof( g_DB_szQuery ), "SELECT MIN(time) FROM " + DB_TABLE_TIMES + " WHERE mapid=%i", g_iMapId );
     SQL_ThreadQuery( g_DB_Tuple, "cbBestTime", g_DB_szQuery );
 }
 
