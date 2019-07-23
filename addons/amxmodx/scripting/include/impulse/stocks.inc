@@ -61,6 +61,17 @@ stock imp_getuserbyuserid( userid )
     return find_player( "k", userid );
 }
 
+stock bool:imp_db_failstate( failstate, const error[], errnum, const additional[] = "N/A" )
+{
+    if ( failstate != TQUERY_SUCCESS )
+    {
+        server_print( CONSOLE_PREFIX + "SQL Query error %i (%s): %s", errnum, error, additional );
+        return true;
+    }
+
+    return false;
+}
+
 // Register say triggers (ie. 'say /spawn') from file per section name.
 stock imp_registertriggers( const section[], const function[] )
 {

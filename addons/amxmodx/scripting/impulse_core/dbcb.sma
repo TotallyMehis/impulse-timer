@@ -1,19 +1,12 @@
 public cbEmpty( failState, Handle:hQuery, szError[], iError, data[], size, Float:queueTime )
 {
-    if ( failState )
-    {
-        server_print( CONSOLE_PREFIX + "SQL Query error %i: %s", iError, szError );
-        return;
-    }
+    imp_db_failstate( failState, szError, iError, "generic (core)" );
 }
 
 public cbNewPlyId( failState, Handle:hQuery, szError[], iError, data[], size, Float:queueTime )
 {
-    if ( failState )
-    {
-        server_print( CONSOLE_PREFIX + "SQL Query error %i: %s", iError, szError );
+    if ( imp_db_failstate( failState, szError, iError, "new player id" ) )
         return;
-    }
 
 
     new ply = data[0];
@@ -25,11 +18,8 @@ public cbNewPlyId( failState, Handle:hQuery, szError[], iError, data[], size, Fl
 
 public cbPlyId( failState, Handle:hQuery, szError[], iError, data[], size, Float:queueTime )
 {
-    if ( failState )
-    {
-        server_print( CONSOLE_PREFIX + "SQL Query error %i: %s", iError, szError );
+    if ( imp_db_failstate( failState, szError, iError, "getting player id" ) )
         return;
-    }
 
 
     new ply = data[0];
@@ -59,11 +49,8 @@ public cbPlyId( failState, Handle:hQuery, szError[], iError, data[], size, Float
 
 public cbMapId( failState, Handle:hQuery, szError[], iError, data[], size, Float:queueTime )
 {
-    if ( failState )
-    {
-        server_print( CONSOLE_PREFIX + "SQL Query error %i: %s", iError, szError );
+    if ( imp_db_failstate( failState, szError, iError, "getting map id" ) )
         return;
-    }
 
 
     // No map found, insert new one.
@@ -84,11 +71,8 @@ public cbMapId( failState, Handle:hQuery, szError[], iError, data[], size, Float
 
 public cbNewMapId( failState, Handle:hQuery, szError[], iError, data[], size, Float:queueTime )
 {
-    if ( failState )
-    {
-        server_print( CONSOLE_PREFIX + "SQL Query error %i: %s", iError, szError );
+    if ( imp_db_failstate( failState, szError, iError, "new map id" ) )
         return;
-    }
 
 
     dbGetMapId();
@@ -96,11 +80,8 @@ public cbNewMapId( failState, Handle:hQuery, szError[], iError, data[], size, Fl
 
 public cbPlyData( failState, Handle:hQuery, szError[], iError, data[], size, Float:queueTime )
 {
-    if ( failState )
-    {
-        server_print( CONSOLE_PREFIX + "SQL Query error %i: %s", iError, szError );
+    if ( imp_db_failstate( failState, szError, iError, "player records" ) )
         return;
-    }
     
     
     new ply = data[0];
@@ -121,11 +102,8 @@ public cbPlyData( failState, Handle:hQuery, szError[], iError, data[], size, Flo
 
 public cbBestTime( failState, Handle:hQuery, szError[], iError, data[], size, Float:queueTime )
 {
-    if ( failState )
-    {
-        server_print( CONSOLE_PREFIX + "SQL Query error %i: %s", iError, szError );
+    if ( imp_db_failstate( failState, szError, iError, "server best" ) )
         return;
-    }
     
 
     if ( SQL_NumResults( hQuery ) )
@@ -139,11 +117,8 @@ public cbBestTime( failState, Handle:hQuery, szError[], iError, data[], size, Fl
 
 public cbRecords( failState, Handle:hQuery, szError[], iError, data[], size, Float:queueTime )
 {
-    if ( failState )
-    {
-        server_print( CONSOLE_PREFIX + "SQL Query error %i: %s", iError, szError );
+    if ( imp_db_failstate( failState, szError, iError, "showing records" ) )
         return;
-    }
     
     
     new ply = imp_getuserbyuserid( data[0] );
