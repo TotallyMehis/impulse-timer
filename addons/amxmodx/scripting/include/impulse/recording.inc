@@ -11,4 +11,4 @@
 
 
 native bool:impulse_isrecordbot( ply );
-native bool:impulse_getrecordinginfo( ply, &Float:rectime, recname[], recname_length );
+native bool:impulse_getrecordinginfo( ply, &styleid, &Float:rectime, recname[], recname_length );

@@ -4,12 +4,12 @@ public cmdSay( ply )
     
     static szMsg[128];
     
-    if ( read_argv( 1, szMsg, sizeof( szMsg ) ) < 1 ) return PLUGIN_HANDLED;
+    if ( read_argv( 1, szMsg, charsmax( szMsg ) ) < 1 ) return PLUGIN_HANDLED;
     
     remove_quotes( szMsg );
     
     static szName[32];
-    get_user_name( ply, szName, sizeof( szName ) );
+    get_user_name( ply, szName, charsmax( szName ) );
     
     
     client_print_color( 0, ply, "^x04[^x03%s^x04] ^x03%s^x01: %s", g_szPlyRank[ply], szName, szMsg );
@@ -29,7 +29,7 @@ public cmdShowRank( ply )
     if ( nextrank == -1 ) return PLUGIN_HANDLED;
 
 
-    getRankName( nextrank, szNextRank, sizeof( szNextRank ) );
+    getRankName( nextrank, szNextRank, charsmax( szNextRank ) );
 
     new plypoints = g_iPlyRankPoints[ply];
     new pointsleft = getRankPoints( nextrank ) - plypoints;

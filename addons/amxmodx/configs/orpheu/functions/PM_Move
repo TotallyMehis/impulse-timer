@@ -1,0 +1,13 @@
+{
+    "name" : "PM_Move",
+    "library" : "mod",
+    "arguments" :
+    [
+        {
+            "type" : "playermove_s *"
+        },
+        {
+            "type" : "qboolean"
+        }
+    ]
+}

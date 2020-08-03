@@ -14,5 +14,5 @@
 
 
 native impulse_getrankpoints( ply );
-native impulse_getrank( ply, rank[], rank_length );
+native impulse_getplyrank( ply, rank[], rank_length );
 

@@ -1,7 +1,38 @@
-public cmdBlocked( ply ) return PLUGIN_HANDLED;
+public cmdBlocked( ply )
+{
+    return PLUGIN_HANDLED;
+}
+
+public cmdSay( ply )
+{
+    // say /style
+    if ( read_argc() < 2 )
+    {
+        return PLUGIN_CONTINUE;
+    }
+
+
+    new szCmd[64];
+    read_argv( 1, szCmd, charsmax( szCmd ) );
+
+    // Style command
+    new styleid = INVALID_STYLE;
+
+    if ( TrieGetCell( g_trieStyleCmds, szCmd, styleid ) )
+    {
+        setPlyStyle( ply, styleid, true );
+
+        return PLUGIN_HANDLED;
+    }
+    
+    return PLUGIN_CONTINUE;
+}
 
 public cmdSpawn( ply )
 {
+    server_print( CONSOLE_PREFIX + "Spawning ply: %i | time: %.1f", ply, get_gametime() );
+
+
     if ( cs_get_user_team( ply ) != g_iPrefferedTeam )
         cs_set_user_team( ply, g_iPrefferedTeam );
     
@@ -11,8 +42,13 @@ public cmdSpawn( ply )
         ExecuteHam( Ham_CS_RoundRespawn, ply );
     }
     
+
+    if ( g_bHasStart )
+    {
+        set_pev( ply, pev_origin, g_vecStartPos );
+    }
+    
     //set_pev( ply, pev_angles, g_vecNull );
-    set_pev( ply, pev_origin, g_vecStartPos );
     set_pev( ply, pev_velocity, g_vecNull );
 
 
@@ -87,4 +123,46 @@ public cmdSpectate( ply )
     toSpec( ply );
     
     return PLUGIN_HANDLED;
+}
+
+public cmdSetStyle( ply )
+{
+    new szCmd[64];
+    read_args( szCmd, charsmax( szCmd ) );
+    remove_quotes( szCmd );
+
+    // Skip over '/'
+    new index = 0;
+
+    if ( szCmd[index] == '/' )
+    {
+        ++index;
+    }
+
+    new cmdname[STYLE_SAFENAME_LENGTH];
+    copy( cmdname, charsmax( cmdname ), szCmd[index] );
+    
+
+
+    new shortname[STYLE_SAFENAME_LENGTH];
+
+    for ( new styleIndex = 0; styleIndex < g_nStyles; styleIndex++ )
+    {
+        getStyleSafeName( styleIndex, shortname, charsmax( shortname ) );
+
+        if ( equali( shortname, cmdname ) )
+        {
+            if ( setPlyStyle( ply, getStyleId( styleIndex ), true ) )
+            {
+                return PLUGIN_HANDLED;
+            }
+        }
+    }
+
+    return PLUGIN_CONTINUE;
+}
+
+public cmdStyleMenu( ply )
+{
+    
 }

@@ -26,9 +26,9 @@ stock Float:imp_getspeed3d( ply )
     return floatsqroot( _vecVel[0] * _vecVel[0] + _vecVel[1] * _vecVel[1] + _vecVel[2] * _vecVel[2] );
 }
 
-static _szMins[3];
-static _szSecs[6];
-stock imp_formatseconds( const Float:in_secs, szTarget[], nLength, bool:bIsDeci = false )
+static _szMins[12];
+static _szSecs[12];
+stock imp_formatseconds( const Float:in_secs, szTarget[], target_len, bool:bIsDeci = false )
 {
     new Float:secs = 0.0;
     new iMins = 0;
@@ -40,20 +40,19 @@ stock imp_formatseconds( const Float:in_secs, szTarget[], nLength, bool:bIsDeci 
     }
 
     
-    formatex( _szMins, sizeof( _szMins ), ( iMins < 10 ) ? "0%i" : "%i", iMins );
+    formatex( _szMins, charsmax( _szMins ), ( iMins < 10 ) ? "0%i" : "%i", iMins );
     
-    if ( bIsDeci )  formatex( _szSecs, sizeof( _szSecs ), ( secs < 10.0 ) ? "0%.2f" : "%.2f", secs );
-    else            formatex( _szSecs, sizeof( _szSecs ), ( secs < 10.0 ) ? "0%.1f" : "%.1f", secs );
+    if ( bIsDeci )  formatex( _szSecs, charsmax( _szSecs ), ( secs < 10.0 ) ? "0%.2f" : "%.2f", secs );
+    else            formatex( _szSecs, charsmax( _szSecs ), ( secs < 10.0 ) ? "0%.1f" : "%.1f", secs );
     
-    formatex( szTarget, nLength, "%s:%s", _szMins, _szSecs );
+    formatex( szTarget, target_len, "%s:%s", _szMins, _szSecs );
 }
 
 stock imp_getsafemapname( out[], out_len )
 {
     get_mapname( out, out_len );
     
-    new len = strlen( out );
-    for ( new i = 0; i < len; i++ ) char_to_lower( out[i] );
+    strtolower( out );
 }
 
 stock imp_getuserbyuserid( userid )
@@ -77,8 +76,8 @@ stock imp_registertriggers( const section[], const function[] )
 {
     new szFile[256];
     
-    get_basedir( szFile, sizeof( szFile ) );
-    add( szFile, sizeof( szFile ), SAYTRIGGER_FILE );
+    get_basedir( szFile, charsmax( szFile ) );
+    add( szFile, charsmax( szFile ), SAYTRIGGER_FILE );
     if ( !file_exists( szFile ) )
     {
         return -1;
@@ -103,9 +102,9 @@ stock imp_registertriggers( const section[], const function[] )
     new len = ArraySize( arr );
     for ( new i = 2; i < len; i++ )
     {
-        ArrayGetString( arr, i, szTrigger, sizeof( szTrigger ) );
+        ArrayGetString( arr, i, szTrigger, charsmax( szTrigger ) );
 
-        formatex( szOut, sizeof( szOut ), "say %s", szTrigger );
+        formatex( szOut, charsmax( szOut ), "say %s", szTrigger );
 
         register_clcmd( szOut, function );
     }
@@ -124,7 +123,7 @@ public bool:_imp_registertriggers_ns( INIParser:handle, const section[], bool:in
 
 
     new mysection[32];
-    ArrayGetString( arr, 0, mysection, sizeof( mysection ) );
+    ArrayGetString( arr, 0, mysection, charsmax( mysection ) );
 
     if ( equali( mysection, section ) )
     {

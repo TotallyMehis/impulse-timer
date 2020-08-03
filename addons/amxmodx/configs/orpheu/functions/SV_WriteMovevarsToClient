@@ -1,0 +1,18 @@
+{
+    "name" : "SV_WriteMovevarsToClient",
+    "library" : "engine",
+    "arguments" :
+    [
+        {
+            "type" : "int"
+        }
+    ],
+    "identifiers":
+    [
+        {
+            "os" : "windows",
+            "mod"   : "cstrike",
+            "value" : [0x55,0x8B,0xEC,0x56,0x8B,"*","*",0x6A,0x2C,0x56,0xE8,"*","*","*","*",0xA1,"*","*","*","*",0x50,0x56,0xE8,"*","*","*","*",0x8B]
+        }
+    ]
+}

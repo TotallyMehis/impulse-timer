@@ -72,7 +72,7 @@ public _impulse_getrankpoints( id, num )
     return g_iPlyRankPoints[ply];
 }
 
-public bool:_impulse_getrank( id, num )
+public bool:_impulse_getplyrank( id, num )
 {
     new ply = get_param( 1 );
 
@@ -88,8 +88,6 @@ public bool:_impulse_getrank( id, num )
     {
         set_string( 2, g_szNa, len );
     }
-    
-    
 }
 
 public plugin_natives()
@@ -98,13 +96,13 @@ public plugin_natives()
 
 
     register_native( "impulse_getrankpoints", "_impulse_getrankpoints" );
-    register_native( "impulse_getrank", "_impulse_getrank" );
+    register_native( "impulse_getplyrank", "_impulse_getplyrank" );
 }
 
 public client_connect( ply )
 {
     g_iPlyRank[ply] = -1;
-    copy( g_szPlyRank[ply], sizeof( g_szPlyRank[] ), g_szNa );
+    copy( g_szPlyRank[ply], charsmax( g_szPlyRank[] ), g_szNa );
 
     g_iPlyRankPoints[ply] = INVALID_RANK_POINTS;
 }
@@ -114,9 +112,15 @@ public impulse_on_ply_id( ply, plyid )
     dbGetRank(ply);
 }
 
-public impulse_on_end_post( ply, Float:time )
+public impulse_on_end_post( ply, const recordData[] )
 {
-    new Float: pbtime = impulse_getpbtime( ply );
+    if ( g_iPlyRankPoints[ply] == INVALID_RANK_POINTS )
+    {
+        server_print( CONSOLE_PREFIX + "Player %i finished but had no rank points cached! Can't add points!", ply );
+        return;
+    }
+
+    new Float:pbtime = Float:recordData[RECORDDATA_PREV_PB_TIME];
 
     new bool:bFirstTime = pbtime == INVALID_TIME;
 
@@ -163,12 +167,14 @@ stock getRankPoints( item )
 
 stock getRankName( item, name[], in_len )
 {
-    new len = min( in_len, MAX_RANK_LENGTH );
-    for ( new i = 0; i < len; i++ )
+    static rank[MAX_RANK_LENGTH];
+
+    for ( new i = 0; i < MAX_RANK_LENGTH - 1; i++ )
     {
-        name[i] = ArrayGetCell( g_arrRanks, item, RANK_NAME + i );
+        rank[i] = ArrayGetCell( g_arrRanks, item, RANK_NAME + i );
     }
     
+    copy( name, in_len, rank );
 }
 
 new g_ParseRank_nSectionCount;
@@ -181,8 +187,8 @@ stock parseRanks()
 
 
     new szFile[512];
-    get_basedir( szFile, sizeof( szFile ) );
-    add( szFile, sizeof( szFile ), CONFIG_PATH );
+    get_basedir( szFile, charsmax( szFile ) );
+    add( szFile, charsmax( szFile ), CONFIG_PATH );
 
     if ( !file_exists( szFile ) )
     {
@@ -221,7 +227,7 @@ public SMCResult:smcOnNewSection_rank( SMCParser:handle, const name[], any:data 
 {
     if ( g_ParseRank_nSectionCount++ > 0 )
     {
-        copy( g_ParseRank_szRank, sizeof( g_ParseRank_szRank ), name );
+        copy( g_ParseRank_szRank, charsmax( g_ParseRank_szRank ), name );
     }
 }
 
@@ -259,7 +265,7 @@ stock addRank( const name[], points )
     new data[RANK_SIZE];
 
     data[RANK_POINTS] = points;
-    copy( data[RANK_NAME], MAX_RANK_LENGTH, name );
+    copy( data[RANK_NAME], MAX_RANK_LENGTH - 1, name );
     
 
     ArrayPushArray( g_arrRanks, data );
@@ -275,11 +281,11 @@ stock setPlyRank( ply )
 
     if ( rank != -1 )
     {
-        getRankName( rank, g_szPlyRank[ply], sizeof( g_szPlyRank[] ) );
+        getRankName( rank, g_szPlyRank[ply], charsmax( g_szPlyRank[] ) );
     }
     else
     {
-        copy( g_szPlyRank[ply], sizeof( g_szPlyRank[] ), g_szNa );
+        copy( g_szPlyRank[ply], charsmax( g_szPlyRank[] ), g_szNa );
     }
 
 

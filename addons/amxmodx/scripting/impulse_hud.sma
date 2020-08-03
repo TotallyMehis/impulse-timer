@@ -160,11 +160,15 @@ stock handlePlyTimers()
 {
     static ply;
     static target;
-    static szFormatted[12]; // "XX:XX.XX"
+    static szFormatted[16]; // "XX:XX.XX"
     static szRecName[32];
     static szRank[32];
+    static szStyle[STYLE_NAME_LENGTH];
+    static szSpeed[32];
     static hideflags;
     static Float:time;
+    static styleid;
+    static styledata[STYLE_SIZE];
 
 
     for ( ply = 1; ply <= g_iMaxPlys; ply++ )
@@ -191,61 +195,96 @@ stock handlePlyTimers()
         
         if ( impulse_isrecordbot( target ) )
         {
-            impulse_getrecordinginfo( target, time, szRecName, sizeof( szRecName ) );
+            impulse_getrecordinginfo( target, styleid, time, szRecName, charsmax( szRecName ) );
 
             if ( time != INVALID_TIME )
             {
-                imp_formatseconds( time, szFormatted, sizeof( szFormatted ) );
+                imp_formatseconds( time, szFormatted, charsmax( szFormatted ) );
             }
             else
             {
-                copy( szFormatted, sizeof( szFormatted ), "No Record!" );
+                copy( szFormatted, charsmax( szFormatted ), "No Record!" );
             }
+
+            impulse_getstylename( styleid, szStyle, charsmax( szStyle ) );
             
-            set_hudmessage( 255, 255, 255, -1.0, 0.7, 0, 0.0, 0.1, 0.02, 0.02 );
-            show_hudmessage( ply, "Replay Bot^n%s^n%s", szRecName, szFormatted );
+            set_hudmessage( 255, 255, 255, -1.0, 0.7, 0, 0.0, HUD_TIMER_INTERVAL, 0.02, 0.02 );
+            show_hudmessage( ply, "Replay | %s^n%s^n%s", szStyle, szRecName, szFormatted );
             
             continue;
         }
         
 
+        styleid = impulse_getplystyleid( target );
+
         hideflags = g_fPlyHideFlags[ply];
+
         
+        //
+        // Top
+        //
         if ( !(hideflags & HIDEHUD_PB) )
         {
-            time = impulse_getpbtime( target );
+            time = impulse_getplypbtime( target, styleid );
 
             if ( time == INVALID_TIME )
             {
-                copy( szFormatted, sizeof( szFormatted ) , "N/A" );
+                copy( szFormatted, charsmax( szFormatted ) , "N/A" );
             }
             else
             {
-                imp_formatseconds( time, szFormatted, sizeof( szFormatted ), true );
+                imp_formatseconds( time, szFormatted, charsmax( szFormatted ), true );
             }
 
 
-            impulse_getrank( target, szRank, sizeof( szRank ) );
+            impulse_getplyrank( target, szRank, charsmax( szRank ) );
+            impulse_getstylename( styleid, szStyle, charsmax( szStyle ) );
             
 
-            set_hudmessage( 255, 255, 255, -1.0, 0.01, 0, 0.0, 0.1, 0.02, 0.02 );
-            show_hudmessage( ply, "PB: %s^nRank: %s", szFormatted, szRank );
+            set_hudmessage( 255, 255, 255, -1.0, 0.01, 0, 0.0, HUD_TIMER_INTERVAL, 0.02, 0.02 );
+            show_hudmessage( ply, "Style: %s | PB: %s^nRank: %s", szStyle, szFormatted, szRank );
         }
         
+        //
+        // Timer (lower)
+        //
         if ( !(hideflags & HIDEHUD_TIME) )
         {
-            time = impulse_gettime( target );
+            new bool:bDrawSpeed = true;
             
-            set_hudmessage( 255, 255, 255, -1.0, 0.7, 0, 0.0, 0.1, 0.02, 0.02 );
-            
-            if ( time == INVALID_TIME )
+            if ( target == ply )
             {
-                show_hudmessage( ply, "Press Start Button^n%3.0f ups", imp_getspeed2d( target ) );
+                impulse_getstyledata( styleid, styledata, sizeof( styledata ) );
+                bDrawSpeed = styledata[STYLE_FOLLOWKZRULES] == 0;
+            }
+
+
+            if ( bDrawSpeed )
+            {
+                formatex( szSpeed, charsmax( szSpeed ), "%3.0f ups", imp_getspeed2d( target ) );
             }
             else
             {
-                imp_formatseconds( time, szFormatted, sizeof( szFormatted ) );
-                show_hudmessage( ply, "%s^n%3.0f ups", szFormatted, imp_getspeed2d( target ) );
+                szSpeed[0] = '^0';
+            }
+
+
+
+            time = impulse_getplytime( target );
+            
+            set_hudmessage( 255, 255, 255, -1.0, 0.7, 0, 0.0, HUD_TIMER_INTERVAL, 0.02, 0.02 );
+            
+
+
+
+            if ( time == INVALID_TIME )
+            {
+                show_hudmessage( ply, "Press Start Button^n%s", szSpeed );
+            }
+            else
+            {
+                imp_formatseconds( time, szFormatted, charsmax( szFormatted ) );
+                show_hudmessage( ply, "%s^n%s", szFormatted, szSpeed );
             }
         }
     }    
@@ -258,13 +297,13 @@ public cmdHideMenu( ply )
 
     new len = 0;
     
-    len += format( szMenu[len], sizeof( szMenu ) - len, "\r1. \yViewmodel: %s^n", ( g_fPlyHideFlags[ply] & HIDEHUD_VM ) ? szOption[1] : szOption[0] );
-    len += format( szMenu[len], sizeof( szMenu ) - len, "\r2. \yWater: %s^n", ( g_fPlyHideFlags[ply] & HIDEHUD_WATER ) ? szOption[1] : szOption[0] );
-    len += format( szMenu[len], sizeof( szMenu ) - len, "\r3. \yPlayers: %s^n", ( g_fPlyHideFlags[ply] & HIDEHUD_PLAYERS ) ? szOption[1] : szOption[0] );
-    len += format( szMenu[len], sizeof( szMenu ) - len, "\r4. \yHUD (TOP): %s^n", ( g_fPlyHideFlags[ply] & HIDEHUD_PB ) ? szOption[1] : szOption[0] );
-    len += format( szMenu[len], sizeof( szMenu ) - len, "\r5. \yHUD (TIME/SPEED): %s^n^n", ( g_fPlyHideFlags[ply] & HIDEHUD_TIME ) ? szOption[1] : szOption[0] );
+    len += format( szMenu[len], charsmax( szMenu ) - len, "\r1. \yViewmodel: %s^n", ( g_fPlyHideFlags[ply] & HIDEHUD_VM ) ? szOption[1] : szOption[0] );
+    len += format( szMenu[len], charsmax( szMenu ) - len, "\r2. \yWater: %s^n", ( g_fPlyHideFlags[ply] & HIDEHUD_WATER ) ? szOption[1] : szOption[0] );
+    len += format( szMenu[len], charsmax( szMenu ) - len, "\r3. \yPlayers: %s^n", ( g_fPlyHideFlags[ply] & HIDEHUD_PLAYERS ) ? szOption[1] : szOption[0] );
+    len += format( szMenu[len], charsmax( szMenu ) - len, "\r4. \yHUD (TOP): %s^n", ( g_fPlyHideFlags[ply] & HIDEHUD_PB ) ? szOption[1] : szOption[0] );
+    len += format( szMenu[len], charsmax( szMenu ) - len, "\r5. \yHUD (TIME/SPEED): %s^n^n", ( g_fPlyHideFlags[ply] & HIDEHUD_TIME ) ? szOption[1] : szOption[0] );
     
-    len += format( szMenu[len], sizeof( szMenu ) - len, "\r0. \yExit" );
+    len += format( szMenu[len], charsmax( szMenu ) - len, "\r0. \yExit" );
     
     show_menu( ply, g_fHideMenuFlags, szMenu, -1, HIDEMENU_NAME );
     
@@ -275,19 +314,20 @@ public cmdChangeFOV( ply )
 {
     if ( read_argc() < 1 ) return PLUGIN_HANDLED;
     
-    new szFOV[4];
-    read_argv( 1, szFOV, sizeof( szFOV ) );
+
+    new szFOV[16];
+    read_argv( 1, szFOV, charsmax( szFOV ) );
     
     new fov = str_to_num( szFOV );
     
     if ( fov > 130 )
     {
-        client_print_color( ply, print_chat, CHAT_PREFIX + "Your requested FOV was too high!" );
+        client_print_color( ply, print_chat, CHAT_PREFIX + "Your requested FOV was too high! (^x03%i^x01)", fov );
         return PLUGIN_HANDLED;
     }
     else if ( fov < 75 )
     {
-        client_print_color( ply, print_chat, CHAT_PREFIX + "Your requested FOV was too low!" );
+        client_print_color( ply, print_chat, CHAT_PREFIX + "Your requested FOV was too low! (^x03%i^x01)", fov );
         return PLUGIN_HANDLED;
     }
     

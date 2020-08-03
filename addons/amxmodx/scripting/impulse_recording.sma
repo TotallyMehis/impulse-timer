@@ -12,64 +12,84 @@
 
 
 
+#define BOT_PLAYERMODEL         "models/player/gign/gign.mdl"
+#define BOT_PLAYERMODEL_NAME    "gign"
+
 #define BOT_DEFAULT_NAME        "SR: N/A | /replay"
 
 
-#define MAGIC_NUMBER            0x4B1B
-#define MAGIC_NUMBER_OLD        0x4B1A
+#define MAGIC_NUMBER            0x4B1C
+#define MAGIC_NUMBER_OLD        0x4B1B // No style or recording rate data
+#define MAGIC_NUMBER_OLDEST     0x4B1A // Different frame structure
 
 #define FRAMEFLAG_DUCK          ( 1 << 0 )
 
-// 60 * Minutes * Tickrate
-// 60 * 30 * 66
-#define MAX_RECORDING_LENGTH    118800
+
+// How many times a second we record the player's state.
+#define RECORDING_RATE          33
+
+// Maximum recording length in minutes
+#define MAX_RECORDING_LENGTH    30
 
 
 // Header structure:
 // MAGIC NUMBER
 // SERVER TICKRATE
+// RECORDING RATE
 // TIME
+// STYLE
 // PLAYER NAME
 // RECORDING LENGTH (NUM OF FRAMES)
+
 enum _:FrameData
 {
-    Float:FRAME_POS[3],
+    Float:FRAME_POS[3] = 0,
     Float:FRAME_ANGLES[2],
     FRAME_FLAGS
 };
 #define FRAME_SIZE        6
 
 
-new g_iRecEnt; // Recording ent
-
-
-
+// RECORDING
 new Array:g_ArrPlyRecording[IMP_MAXPLAYERS];
 new bool:g_bPlyRecording[IMP_MAXPLAYERS];
 new bool:g_bPlyMimicing[IMP_MAXPLAYERS];
 new g_iPlyTick[IMP_MAXPLAYERS];
+new Float:g_flRecordingAccumFrametime[IMP_MAXPLAYERS];
 
 
-new g_iRecordingMaxLen;
+new g_iRecordingMaxLen = MAX_RECORDING_LENGTH * 60 * RECORDING_RATE;
 
-// RECORD BOT
+
+// REPLAY BOT
 new g_iRecBot = 0;
-new Array:g_ArrBest = Invalid_Array;
-new Float:g_flRecTime = INVALID_TIME;
-new g_iRecTickMax = 0;
-new g_szRecName[MAX_NAME_LENGTH];
+new Array:g_ArrCurReplay = Invalid_Array;
+new Float:g_flCurReplayTime = INVALID_TIME;
+new g_iCurReplayTickMax = 0;
+new g_szCurReplayName[MAX_NAME_LENGTH];
+new g_iCurReplayStyle = INVALID_STYLE;
+
+new Float:g_flReplayAccumFrametime = 0.0;
+new Float:g_flReplayFrameInterval;
 
 
-new const Float:g_flRate = 0.01515151515151515151515151515152; // Tickrate (1 / 66)
-new g_pServerTicRate;
-
-//new Float:g_flLastRecThink;
+//
+new Array:g_ArrBest[MAX_STYLES] = { Invalid_Array, ... };
+new Float:g_flBestTimes[MAX_STYLES] = { INVALID_TIME, ... };
+new g_szBestNames[MAX_STYLES][MAX_NAME_LENGTH];
+new g_nBestFrameRate[MAX_STYLES];
 
 
 // CACHE
 new g_iMaxPlys;
 new g_szCurMap[64];
 new g_szRecordingPath[256];
+
+new Float:g_vecNull[] = { 0.0, 0.0, 0.0 };
+
+
+new Float:g_flRecordingFrameInterval;
+new g_pServerTicRate;
 
 
 
@@ -79,22 +99,23 @@ public plugin_init()
 
 
     // Forwards
-    register_forward( FM_Think, "fwdThink", true );
+    register_forward( FM_ClientUserInfoChanged, "fwdClientUserInfoChanged" );
+
+
+    g_flReplayFrameInterval = 1.0 / RECORDING_RATE;
+    g_flRecordingFrameInterval = 1.0 / RECORDING_RATE;
 
 
     // Misc.
     g_iMaxPlys = get_maxplayers();
-    g_pServerTicRate = get_cvar_pointer( "sys_ticrate" );
+    if ( !(g_pServerTicRate = get_cvar_pointer( "sys_ticrate" )) )
+    {
+        set_fail_state( CONSOLE_PREFIX + "Failed to get cvar 'sys_ticrate' pointer!" );
+    }
 
-    imp_getsafemapname( g_szCurMap, sizeof( g_szCurMap ) );
+    imp_getsafemapname( g_szCurMap, charsmax( g_szCurMap ) );
 
-
-    // Entities
-    new const class_alloc = engfunc( EngFunc_AllocString, "info_target" );
-    
-    g_iRecEnt = engfunc( EngFunc_CreateNamedEntity, class_alloc );
-    set_pev( g_iRecEnt, pev_classname, "plugin_recording" );
-    set_pev( g_iRecEnt, pev_nextthink, get_gametime() + 1.5 );
+    setRecordingPath();
 }
 
 public bool:_impulse_isrecordbot( id, num )
@@ -108,11 +129,12 @@ public bool:_impulse_getrecordinginfo( id, num )
 {
     new ply = get_param( 1 );
 
-    set_param_byref( 2, _:g_flRecTime );
+    set_param_byref( 2, _:g_iCurReplayStyle );
+    set_param_byref( 3, _:g_flCurReplayTime );
 
 
-    new len = get_param( 4 );
-    set_string( 3, g_szRecName, len );
+    new len = get_param( 5 );
+    set_string( 4, g_szCurReplayName, len );
 
     return g_iRecBot == ply;
 }
@@ -127,30 +149,63 @@ public plugin_natives()
 
 public plugin_cfg()
 {
-    get_basedir( g_szRecordingPath, sizeof( g_szRecordingPath ) );
-    add( g_szRecordingPath, sizeof( g_szRecordingPath ), "/records" );
-    
-    if ( !dir_exists( g_szRecordingPath ) )
-    {
-        mkdir( g_szRecordingPath );
-        return;
-    }
-    
-    
-    g_iRecTickMax = readRecording();
-    // In case our time is shorter but for some reason our tickcount is longer.
-    g_iRecordingMaxLen = floatround( g_iRecTickMax * 1.1 );
+    new numLoaded = loadRecordings();
+
+    server_print( CONSOLE_PREFIX + "Loaded %i recordings!", numLoaded );
+
 
     createRecordBot();
     startRecordBot();
-    
-    if ( g_iRecordingMaxLen <= 0 ) g_iRecordingMaxLen = MAX_RECORDING_LENGTH;
+}
+
+public plugin_end()
+{
+    for ( new i = 0; i < sizeof( g_ArrPlyRecording ); i++ )
+    {
+        if ( g_ArrPlyRecording[i] != Invalid_Array )
+        {
+            ArrayDestroy( g_ArrPlyRecording[i] );
+        }
+    }
+
+    for ( new i = 0; i < MAX_STYLES; i++ )
+    {
+        if ( g_ArrBest[i] != Invalid_Array )
+        {
+            ArrayDestroy( g_ArrBest[i] );
+        }
+    }
+
+    // Current replay should always point at best replays.
+    g_ArrCurReplay = Invalid_Array;
+
+}
+
+public plugin_precache()
+{
+    if ( precache_model( BOT_PLAYERMODEL ) <= 0 )
+    {
+        set_fail_state( CONSOLE_PREFIX + "Failed to precache bot player model '%s'!", BOT_PLAYERMODEL );
+    }
 }
 
 public client_connect( ply )
 {
     g_bPlyMimicing[ply] = false;
     g_bPlyRecording[ply] = false;
+
+    g_flRecordingAccumFrametime[ply] = 0.0;
+}
+
+public client_disconnected( ply, bool:drop, message[], maxlen )
+{
+    g_bPlyMimicing[ply] = false;
+    g_bPlyRecording[ply] = false;
+
+    if ( ply == g_iRecBot )
+    {
+        g_iRecBot = 0;
+    }
 }
 
 public impulse_on_start_post( ply )
@@ -158,32 +213,37 @@ public impulse_on_start_post( ply )
     initPlyRecording( ply );
     g_iPlyTick[ply] = 0;
     g_bPlyRecording[ply] = true;
+
+    g_flRecordingAccumFrametime[ply] = 0.0;
+    insertFrame( ply );
 }
 
-public impulse_on_reset( ply )
+public impulse_on_reset_post( ply )
 {
     g_bPlyRecording[ply] = false;
     g_iPlyTick[ply] = 0;
 }
 
-public impulse_on_end_post( ply, Float:time )
+public impulse_on_end_post( ply, const recordData[] )
 {
-    new Float:prevbest = impulse_getsrtime();
+    new Float:time = Float:recordData[RECORDDATA_TIME];
+    new Float:prevbest = Float:recordData[RECORDDATA_PREV_BEST_TIME];
+    new styleid = recordData[RECORDDATA_STYLE_ID];
 
     new bool:bIsBest = prevbest == INVALID_TIME || time < prevbest;
-    new bool:bRecordingExists = g_ArrBest != Invalid_Array && ArraySize( g_ArrBest ) > 0;
+    new bool:bRecordingExists = g_ArrBest[styleid] != Invalid_Array;
 
     // Assign the record to a bot.
     if ( g_bPlyRecording[ply] && (bIsBest || !bRecordingExists) )
     {
         server_print( CONSOLE_PREFIX + "Saving new record recording %i!", ply );
 
-        saveRecording( ply, time );
+        saveRecording( ply, recordData );
         
-        copyToRecordBot( ply, time );
-
-        g_bPlyRecording[ply] = false;
+        copyForRecordBot( ply, recordData );
     }
+
+    g_bPlyRecording[ply] = false;
 }
 
 public impulse_on_send_spec( ply )
@@ -195,133 +255,161 @@ public impulse_on_send_spec( ply )
     }
 }
 
-public fwdThink( ent )
+public server_frame()
 {
-    if ( g_iRecEnt == ent )
-    {
-        handlePlyRecords();
-        set_pev( ent, pev_nextthink, get_gametime() + g_flRate );
-    }
-}
+    static Float:frametime;
+    global_get( glb_frametime, frametime );
 
-stock handlePlyRecords()
-{
-    //static Float:flCurTime;
-    //flCurTime = get_gametime();
-
-    //static Float:flMult;
-    //flMult = ( flCurTime - g_flLastRecThink );//1.0 / ( flCurTime - g_flLastRecThink );
-    
-    //static i;
-    static ply;
+    static i;
 
     static frame[FRAME_SIZE];
-    static Float:vecTemp[3];
-    static Float:vecPrevPos[3];
     static Float:vecNewPos[3];
+    static Float:vecNewAngles[3];
+    static Float:vecPrevPos[3];
+    static Float:vecNextPos[3];
+    static Float:vecOldPos[3];
+    static Float:vecPrevAngles[3];
+    static Float:vecNextAngles[3];
 
 
-    for ( ply = 1; ply <= g_iMaxPlys; ply++ )
+
+    //
+    // Replay bot mimic
+    //
+    if ( hasRecordBot() && g_bPlyMimicing[g_iRecBot] && g_ArrCurReplay != Invalid_Array )
     {
-        if ( !is_user_alive( ply ) ) continue;
+        new curTick = ( g_iPlyTick[g_iRecBot] < 0 ) ? 0 : g_iPlyTick[g_iRecBot];
+        new nextTick = ( g_iPlyTick[g_iRecBot] < 0 ) ? 0 : (g_iPlyTick[g_iRecBot] + 1);
+        if ( nextTick >= g_iCurReplayTickMax )
+            nextTick = g_iCurReplayTickMax - 1;
+
+
+        // Copy next position.
+        ArrayGetArray( g_ArrCurReplay, nextTick, frame );
+
+        CopyArray( frame[FRAME_POS], vecNextPos, 3 );
+        CopyArray( frame[FRAME_ANGLES], vecNextAngles, 2 );
+        vecNextAngles[2] = 0.0;
+
+        // Copy last position.
+        ArrayGetArray( g_ArrCurReplay, curTick, frame );
+
+        CopyArray( frame[FRAME_POS], vecPrevPos, 3 );
+        CopyArray( frame[FRAME_ANGLES], vecPrevAngles, 2 );
+        vecPrevAngles[2] = 0.0;
+
+
+        // Interpolate the position and angles
+        new Float:frac = g_flReplayAccumFrametime / g_flReplayFrameInterval;
+
+        // Position
+        for ( i = 0; i < 3; i++ )
+        {
+            vecNewPos[i] = vecPrevPos[i] + (vecNextPos[i] - vecPrevPos[i]) * frac;
+        }
         
 
-        if ( g_bPlyMimicing[ply] && g_ArrBest != Invalid_Array )
+        // Angles
+
+        // Pitch can be interpolated easily
+        vecNewAngles[0] = vecPrevAngles[0] + (vecNextAngles[0] - vecPrevAngles[0]) * frac;
+        vecNewAngles[2] = 0.0; // Roll should always be 0 anyway
+
+        // Yaw is a different story. It goes from +180 to -180
+        vecNewAngles[1] = lerpAngle( vecPrevAngles[1], vecNextAngles[1], frac );
+
+
+
+        // Set position
+        pev( g_iRecBot, pev_origin, vecOldPos );
+        set_pev( g_iRecBot, pev_oldorigin, vecOldPos );
+        set_pev( g_iRecBot, pev_origin, vecNewPos );
+
+        // Set angle
+        set_pev( g_iRecBot, pev_fixangle, 1 );
+        set_pev( g_iRecBot, pev_v_angle, vecNewAngles );
+        set_pev( g_iRecBot, pev_angles, vecNewAngles );
+
+
+
+        g_flReplayAccumFrametime += frametime;
+
+        if ( g_flReplayAccumFrametime >= g_flReplayFrameInterval )
         {
-            ArrayGetArray( g_ArrBest, ( g_iPlyTick[ply] < 0 ) ? 0 : g_iPlyTick[ply], frame );
-            
-            
-            
-            pev( ply, pev_origin, vecPrevPos );
-            
-            // Copy new position.
-            CopyArray( frame[FRAME_POS], vecNewPos, 3 );
-            
-            
-            #define MAX_DIST        200.0
-            #define MAX_DIST_SQ     MAX_DIST * MAX_DIST
-            // Build velocity.
-            // if ( getDistSqr( vecPrevPos, vecNewPos ) < MAX_DIST_SQ )
-            // {
-            //     for ( i = 0; i < 3; i++ )
-            //         vecTemp[i] = ( vecNewPos[i] - vecPrevPos[i] ) * flMult;
-                
-            //     set_pev( ply, pev_velocity, vecTemp );
-            // }
-            
-            {
-                // Teleport to new position if we teleported, etc.
-                set_pev( ply, pev_origin, vecNewPos );
-            }
-
-            //set_pev( ply, pev_oldorigin, vecPrevPos );
-            //set_pev( ply, pev_endpos, vecNewPos );
-            
-
-            // Set angle
-            CopyArray( frame[FRAME_ANGLES], vecTemp, 2 );
-            vecTemp[2] = 0.0;
-
-            set_pev( ply, pev_fixangle, 1 );
-            //set_pev( ply, pev_v_angle, vecTemp );
-            set_pev( ply, pev_angles, vecTemp );
-            
-
-            // Misc.
-            if ( frame[FRAME_FLAGS] & FRAMEFLAG_DUCK )
-            {
-                set_pev( ply, pev_flags, pev( ply, pev_flags ) | FL_DUCKING );
-                //set_pev( ply, pev_gaitsequence, 3 );
-                //set_pev( ply, pev_frame, 0.0 );
-            }
-            else
-            {
-                //static const Float:vecViewOff[] = { 0.0, 0.0, 17.0 };
-                //set_pev( ply, pev_view_ofs, vecViewOff );
-                set_pev( ply, pev_flags, pev( ply, pev_flags ) &~ FL_DUCKING );
-            }
-            
-
-
-            g_iPlyTick[ply]++;
-            
-
-            if ( g_iPlyTick[ply] >= g_iRecTickMax )
-            {
-                g_bPlyMimicing[ply] = false;
-                
-                set_task( 0.5, "taskPlaybackRestart", get_user_userid( ply ) );
-            }
-            
-            // Required to only run once (?)
-            // Only doing it once will make the bot's angles fucked up.
-            // It will start to work after a while. I don't know why. Something to do with angles being equal?
-            // We can't call it every tick or otherwise playback will be screwed.
-            //engfunc( EngFunc_RunPlayerMove, ply, vecTemp, 0.0, 0.0, 0.0, 0, 0, 66 );
+            g_flReplayAccumFrametime -= g_flReplayFrameInterval;
+            g_iPlyTick[g_iRecBot]++;
         }
-        else if ( g_bPlyRecording[ply] )
+
+
+        if ( g_iPlyTick[g_iRecBot] >= g_iCurReplayTickMax )
         {
-            // Check if too long.
-            if ( g_iPlyTick[ply] > g_iRecordingMaxLen )
+            g_bPlyMimicing[g_iRecBot] = false;
+            
+            new params[1];
+            params[0] = get_user_userid( g_iRecBot );
+            set_task( 0.5, "taskPlaybackRestart", _, params, sizeof( params ) );
+        }
+        
+
+        
+
+        set_pev( g_iRecBot, pev_basevelocity, g_vecNull );
+        for ( i = 0; i < 3; i++ )
+        {
+            vecNewPos[i] = (vecNextPos[i] - vecPrevPos[i]) / g_flReplayFrameInterval;
+        }
+        
+        set_pev( g_iRecBot, pev_velocity, vecNewPos );
+
+
+
+        // Misc.
+        if ( frame[FRAME_FLAGS] & FRAMEFLAG_DUCK )
+        {
+            set_pev( g_iRecBot, pev_flags, pev( g_iRecBot, pev_flags ) | FL_DUCKING );
+            //set_pev( g_iRecBot, pev_gaitsequence, 3 );
+            //set_pev( g_iRecBot, pev_frame, 0.0 );
+        }
+        else
+        {
+            //static const Float:vecViewOff[] = { 0.0, 0.0, 17.0 };
+            //set_pev( ply, pev_view_ofs, vecViewOff );
+            set_pev( g_iRecBot, pev_flags, pev( g_iRecBot, pev_flags ) &~ FL_DUCKING );
+        }
+    }
+
+
+    //
+    // Recording
+    //
+    static ply;
+    for ( ply = 1; ply <= g_iMaxPlys; ply++ )
+    {
+        if ( g_bPlyRecording[ply] )
+        {
+            g_flRecordingAccumFrametime[ply] += frametime;
+
+            if ( g_flRecordingAccumFrametime[ply] >= g_flRecordingFrameInterval )
             {
-                g_bPlyRecording[ply] = false;
-                initPlyRecording( ply );
-                
-                continue;
+                g_flRecordingAccumFrametime[ply] -= g_flRecordingFrameInterval;
+
+
+                g_iPlyTick[ply]++;
+
+                // Check if too long.
+                if ( g_iPlyTick[ply] >= g_iRecordingMaxLen )
+                {
+                    //client_print_color( ply, ply, CHAT_PREFIX + "Stopped recording your run. Cannot be longer than ^x03%i^x01 minutes.", MAX_RECORDING_LENGTH );
+
+                    g_bPlyRecording[ply] = false;
+                    initPlyRecording( ply );
+                    
+                    continue;
+                }
+
+
+                insertFrame( ply );
             }
-            
-            
-            pev( ply, pev_angles, vecTemp );
-            CopyArray( vecTemp, frame[FRAME_ANGLES], 2 );
-            
-            pev( ply, pev_origin, vecTemp );
-            CopyArray( vecTemp, frame[FRAME_POS], 3 );
-            
-            frame[FRAME_FLAGS] = ( pev( ply, pev_flags ) & FL_DUCKING ) ? FRAMEFLAG_DUCK : 0;
-            
-            
-            g_iPlyTick[ply]++;
-            ArrayPushArray( g_ArrPlyRecording[ply], frame );
         }
     }
     
@@ -335,20 +423,19 @@ public CopyArray( const any:oldArray[], any:newArray[], size )
         newArray[i] = oldArray[i];
 }
 
-public taskPlaybackRestart( userid )
+public taskPlaybackRestart( params[] )
 {
-    new ply = imp_getuserbyuserid( userid );
+    new ply = imp_getuserbyuserid( params[0] );
     if ( ply && is_user_bot( ply ) )
     {
-        g_bPlyMimicing[ply] = true;
-        g_iPlyTick[ply] = -100;
+        start_next_replay();
     }
 }
 
 stock createRecordBot()
 {
     new szName[MAX_NAME_LENGTH];
-    copy( szName, sizeof( szName ), BOT_DEFAULT_NAME );
+    copy( szName, charsmax( szName ), BOT_DEFAULT_NAME );
     
     new bot = engfunc( EngFunc_CreateFakeClient, szName );
     
@@ -359,13 +446,6 @@ stock createRecordBot()
     }
     
     dllfunc( MetaFunc_CallGameEntity, "player", bot );
-    // static szRejectReason[128];
-    // dllfunc(DLLFunc_ClientConnect,bot,szName,"127.0.0.1",szRejectReason);
-    // if(!is_user_connected(bot)) {
-    //     server_print("Connection rejected: %s",szRejectReason);
-    // }
-
-    // dllfunc(DLLFunc_ClientPutInServer,bot);
 
     
     cs_set_user_team( bot, CS_TEAM_CT );
@@ -392,7 +472,9 @@ stock createRecordBot()
     set_user_info( bot, "*bot", "1" ); // For BOT-sign in scoreboard
     
 
-    cs_set_user_model( bot, "gign", true );
+    set_pev( bot, pev_iuser1, 0 );
+
+    cs_set_user_model( bot, BOT_PLAYERMODEL, true );
     
     // Rest I don't know about
     // set_user_info( bot, "model", "gordon" );
@@ -414,10 +496,6 @@ stock createRecordBot()
     
     
     g_iRecBot = bot;
-    g_iPlyTick[bot] = 0;
-    
-    g_bPlyRecording[bot] = false;
-    g_bPlyMimicing[bot] = true;
 
     return true;
 }
@@ -429,9 +507,11 @@ stock startRecordBot()
     
 
     setRecordBotName();
+
+    start_next_replay();
 }
 
-stock saveRecording( ply, Float:time )
+stock saveRecording( ply, const recordData[] )
 {
     new Array:arr = g_ArrPlyRecording[ply];
 
@@ -448,7 +528,7 @@ stock saveRecording( ply, Float:time )
     
 
     static szFile[256];
-    formatex( szFile, sizeof( szFile ), "%s/%s.rec", g_szRecordingPath, g_szCurMap );
+    formatex( szFile, charsmax( szFile ), "%s/style_%i.rec", g_szRecordingPath, recordData[RECORDDATA_STYLE_ID] );
     
     new file = fopen( szFile, "wb" );
     
@@ -456,10 +536,12 @@ stock saveRecording( ply, Float:time )
     // Write the header.
     fwrite( file, MAGIC_NUMBER, BLOCK_INT );
     fwrite( file, get_pcvar_num( g_pServerTicRate ), BLOCK_INT );
-    fwrite( file, time, BLOCK_INT );
+    fwrite( file, RECORDING_RATE, BLOCK_INT );
+    fwrite( file, Float:recordData[RECORDDATA_TIME], BLOCK_INT );
+    fwrite( file, recordData[RECORDDATA_STYLE_ID], BLOCK_INT );
     
     new szName[MAX_NAME_LENGTH];
-    get_user_name( ply, szName, sizeof( szName ) );
+    get_user_name( ply, szName, charsmax( szName ) );
     
     for ( new i = 0; i < sizeof( szName ); i++ )
         fwrite( file, szName[i], BLOCK_CHAR );
@@ -480,55 +562,80 @@ stock saveRecording( ply, Float:time )
     return len;
 }
 
-stock readRecording()
+stock Array:readRecording( filename[], &Float:time, &styleid, name[], &framerate )
 {
-    static szFile[256];
-    formatex( szFile, sizeof( szFile ), "%s/%s.rec", g_szRecordingPath, g_szCurMap );
-    
-    if ( !file_exists( szFile ) )
+    if ( !file_exists( filename ) )
     {
-        return -1;
+        return Invalid_Array;
     }
 
 
-    new file = fopen( szFile, "rb" );
+    new file = fopen( filename, "rb" );
+
+    if ( !file )
+    {
+        return Invalid_Array;
+    }
     
+
     new iMagic;
     fread( file, iMagic, BLOCK_INT );
 
-    new bool:bMagicOk = iMagic == MAGIC_NUMBER;
-    new bool:bOldMagic = iMagic == MAGIC_NUMBER_OLD;
+    new bool:bLatestVersion = iMagic == MAGIC_NUMBER;
+    new bool:bOldFrameStruct = iMagic == MAGIC_NUMBER_OLDEST;
+
+    new bool:bMagicOk = bLatestVersion || bOldFrameStruct || iMagic == MAGIC_NUMBER_OLD;
     
-    if ( !bMagicOk && !bOldMagic )
+    if ( !bMagicOk )
     {
         server_print( CONSOLE_PREFIX + "Tried to read from a record file with a different magic number!" );
         fclose( file );
         
-        return 0;
+        return Invalid_Array;
     }
     
     new iTickRate;
     fread( file, iTickRate, BLOCK_INT );
+
+    if ( bLatestVersion )
+    {
+        fread( file, framerate, BLOCK_INT );
+    }
+    //
+    // Old versions had 66 frames per second.
+    //
+    else
+    {
+        framerate = 66;
+    }
     
-    fread( file, g_flRecTime, BLOCK_INT );
-    server_print( CONSOLE_PREFIX + "Record bot's time: %.2fsec", g_flRecTime );
+    fread( file, time, BLOCK_INT );
+    server_print( CONSOLE_PREFIX + "Record bot's time: %.2fsec", time );
+
+    if ( bLatestVersion )
+        fread( file, styleid, BLOCK_INT );
     
-    for ( new i = 0; i < sizeof( g_szRecName ); i++ )
-        fread( file, g_szRecName[i], BLOCK_CHAR );
+    for ( new i = 0; i < MAX_NAME_LENGTH; i++ )
+        fread( file, name[i], BLOCK_CHAR );
         
-    if ( strlen( g_szRecName ) < 1 )
-        formatex( g_szRecName, sizeof( g_szRecName ), "N/A" );
+    if ( strlen( g_szCurReplayName ) < 1 )
+        formatex( g_szCurReplayName, charsmax( g_szCurReplayName ), "N/A" );
     
     
     new iTickCount;
     fread( file, iTickCount, BLOCK_INT );
-    if ( !iTickCount ) return 0;
-    
+    if ( iTickCount <= 0 )
+    {
+        fclose( file );
+        return Invalid_Array;
+    }
     
     new frame[FRAME_SIZE];
-    initBestRecording();
-    
-    if ( bOldMagic )
+
+
+    new Array:hndl = ArrayCreate( _:FrameData );
+
+    if ( bOldFrameStruct )
     {
         server_print( CONSOLE_PREFIX + "Reading old recording!" );
 
@@ -539,7 +646,7 @@ stock readRecording()
             fread( file, temp, BLOCK_INT );
             fread( file, frame[FRAME_FLAGS], BLOCK_INT );
             
-            ArrayPushArray( g_ArrBest, frame ); 
+            ArrayPushArray( hndl, frame ); 
         }
     }
     else
@@ -548,26 +655,14 @@ stock readRecording()
         {
             fread_blocks( file, frame, FRAME_SIZE, BLOCK_INT );
             
-            ArrayPushArray( g_ArrBest, frame ); 
+            ArrayPushArray( hndl, frame ); 
         }
     }
 
     
     fclose( file );
 
-    return iTickCount;
-}
-
-stock initBestRecording()
-{
-    if ( g_ArrBest == Invalid_Array )
-    {
-        g_ArrBest = ArrayCreate( _:FrameData );
-    }
-    else
-    {
-        ArrayClear( g_ArrBest );
-    }
+    return hndl;
 }
 
 stock bool:hasRecordBot()
@@ -575,7 +670,29 @@ stock bool:hasRecordBot()
     return g_iRecBot > 0;
 }
 
-stock bool:copyToRecordBot( ply, Float:time )
+public fwdClientUserInfoChanged( ply )
+{
+    // Hide bot name change.
+    if ( ply == g_iRecBot )
+    {
+        new szOldName[32];
+        pev( ply, pev_netname, szOldName, charsmax( szOldName ) );
+        if( szOldName[0] )
+        {
+            new szNewName[32];
+            get_user_info( ply, "name", szNewName, charsmax( szNewName ) );
+            if( !equal( szOldName, szNewName ) )
+            {
+                set_pev( ply, pev_netname, szNewName );
+                return FMRES_HANDLED;
+            }
+        }
+    }
+
+    return FMRES_IGNORED;
+}
+
+stock bool:copyForRecordBot( ply, const recordData[] )
 {
     new Array:arr = g_ArrPlyRecording[ply];
 
@@ -584,36 +701,27 @@ stock bool:copyToRecordBot( ply, Float:time )
         return false;
     }
 
-    if ( !hasRecordBot() && !createRecordBot() )
+    if ( !hasRecordBot() )
     {
-        server_print( CONSOLE_PREFIX + "Failed to create a record bot!" );
         return false;
     }
 
 
-    new bot = g_iRecBot;
-
-    g_bPlyMimicing[bot] = false;
-    
-    g_ArrBest = ArrayClone( arr );
-    g_iRecTickMax = ArraySize( g_ArrBest );
-    
-    g_iRecordingMaxLen = floatround( g_iRecTickMax * 1.2 );
-
-    g_flRecTime = time;
-
-    
-    // Format timer HUD name.
-    new szName[MAX_NAME_LENGTH];
-    get_user_name( ply, szName, sizeof( szName ) );
-    copy( g_szRecName, sizeof( g_szRecName ), szName );
-    
+    new styleid = recordData[RECORDDATA_STYLE_ID];
 
 
-    setRecordBotName();
-    
-    g_iPlyTick[bot] = 0;
-    g_bPlyMimicing[bot] = true;
+    if ( g_ArrBest[styleid] != Invalid_Array )
+    {
+        ArrayDestroy( g_ArrBest[styleid] );
+    }
+
+    g_ArrBest[styleid] = ArrayClone( arr );
+    g_flBestTimes[styleid] = Float:recordData[RECORDDATA_TIME];
+    g_nBestFrameRate[styleid] = RECORDING_RATE;
+    get_user_name( ply, g_szBestNames[styleid], charsmax( g_szBestNames[] ) );
+
+
+    startReplay( styleid );
 
     return true;
 }
@@ -622,21 +730,22 @@ stock setRecordBotName()
 {
     new bot = g_iRecBot;
 
-    new bool:bHasRecord = g_iRecTickMax > 0;
+    new bool:bHasRecord = g_iCurReplayTickMax > 0;
 
     new szName[MAX_NAME_LENGTH];
     if ( bHasRecord )
     {
-        
         new szFormatted[32];
-        imp_formatseconds( g_flRecTime, szFormatted, sizeof( szFormatted ) );
+        new szStyle[32];
 
+        imp_formatseconds( g_flCurReplayTime, szFormatted, charsmax( szFormatted ) );
+        impulse_getstylename( g_iCurReplayStyle, szStyle, charsmax( szStyle ) );
         
-        formatex( szName, sizeof( szName ), "SR: %s | %s", szFormatted, g_szRecName );
+        formatex( szName, charsmax( szName ), "SR: %s | %s | %s", szFormatted, szStyle, g_szCurReplayName );
     }
     else
     {
-        copy( szName, sizeof( szName ), BOT_DEFAULT_NAME );
+        copy( szName, charsmax( szName ), BOT_DEFAULT_NAME );
     }
 
     set_user_info( bot, "name", szName );
@@ -672,4 +781,205 @@ stock Float:getDistSqr( const Float:vec1[3], const Float:vec2[3] )
     }
     
     return ( vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2] );
+}
+
+stock setRecordingPath()
+{
+    g_szRecordingPath[0] = 0;
+
+    get_basedir( g_szRecordingPath, charsmax( g_szRecordingPath ) );
+
+    add( g_szRecordingPath, charsmax( g_szRecordingPath ), "/data" );
+    if ( !dir_exists( g_szRecordingPath ) )
+    {
+        set_fail_state( "Failed to find directory '%s' to save recordings into!", g_szRecordingPath );
+        return;
+    }
+
+
+    add( g_szRecordingPath, charsmax( g_szRecordingPath ), "/impulse_recordings" );
+    
+    if ( !dir_exists( g_szRecordingPath ) )
+    {
+        if ( mkdir( g_szRecordingPath ) == -1 )
+        {
+            set_fail_state( "Failed to create directory '%s' to save recordings into!", g_szRecordingPath );
+            return;
+        }
+    }
+
+    format( g_szRecordingPath, charsmax( g_szRecordingPath ), "%s/%s", g_szRecordingPath, g_szCurMap );
+    
+    if ( !dir_exists( g_szRecordingPath ) )
+    {
+        if ( mkdir( g_szRecordingPath ) == -1 )
+        {
+            set_fail_state( "Failed to create directory '%s' to save recordings into!", g_szRecordingPath );
+            return;
+        }
+    }
+
+
+    server_print( CONSOLE_PREFIX + "Setting recording path to '%s'", g_szRecordingPath );
+}
+
+stock insertFrame( ply )
+{
+    static frame[FRAME_SIZE];
+    static Float:vec[3];
+
+    pev( ply, pev_angles, vec );
+    CopyArray( vec, frame[FRAME_ANGLES], 2 );
+    
+    pev( ply, pev_origin, vec );
+    CopyArray( vec, frame[FRAME_POS], 3 );
+    
+    frame[FRAME_FLAGS] = ( pev( ply, pev_flags ) & FL_DUCKING ) ? FRAMEFLAG_DUCK : 0;
+
+    ArrayPushArray( g_ArrPlyRecording[ply], frame );
+}
+
+stock loadRecordings()
+{
+    new szFile[256];
+    new FileType:type;
+    
+    new dir = open_dir( g_szRecordingPath, szFile, charsmax( szFile ), type );
+    if ( !dir )
+    {
+        return 0;
+    }
+
+
+    new count = 0;
+
+
+    new defaultstyleid = impulse_getdefaultstyleid();
+
+    if ( defaultstyleid == INVALID_STYLE )
+    {
+        server_print( CONSOLE_PREFIX + "Failed to retrieve default style id!" );
+    }
+
+
+    do
+    {
+        if ( type != FileType_File )
+            continue;
+
+
+        new fullpath[256];
+        formatex( fullpath, charsmax( fullpath ), "%s/%s", g_szRecordingPath, szFile );
+
+
+        new Float:flTime = INVALID_TIME;
+        new styleid = defaultstyleid;
+        new name[MAX_NAME_LENGTH];
+        new framerate;
+
+        new Array:recording = readRecording( fullpath, flTime, styleid, name, framerate );
+
+        if ( recording == Invalid_Array )
+        {
+            continue;
+        }
+
+
+        g_ArrBest[styleid] = recording;
+        g_flBestTimes[styleid] = flTime;
+        
+        copy( g_szBestNames[styleid], charsmax( g_szBestNames[] ), name );
+        g_flBestTimes[styleid] = flTime;
+        g_nBestFrameRate[styleid] = framerate;
+
+        ++count;
+    }
+    while ( next_file( dir, szFile, charsmax( szFile ), type ) == 1 );
+
+    return count;
+}
+
+stock bool:start_next_replay()
+{
+    new end = g_iCurReplayStyle;
+    if ( end < 0 || end >= MAX_STYLES )
+        end = 0;
+
+
+    new styleid = end;
+        
+    do
+    {
+        ++styleid;
+
+        if ( styleid < 0 || styleid >= MAX_STYLES )
+            styleid = 0;
+
+        if ( replayExists( styleid ) )
+        {
+            break;
+        }
+    }
+    while ( styleid != end );
+
+
+
+    if ( replayExists( styleid ) )
+    {
+        startReplay( styleid );
+        return true;
+    }
+
+    return false;
+}
+
+stock replayExists( styleid )
+{
+    return g_ArrBest[styleid] != Invalid_Array;
+}
+
+stock startReplay( styleid )
+{
+    g_ArrCurReplay = g_ArrBest[styleid];
+    g_iCurReplayTickMax = ArraySize( g_ArrCurReplay );
+
+    g_flCurReplayTime = g_flBestTimes[styleid];
+
+    g_flReplayFrameInterval = 1.0 / g_nBestFrameRate[styleid];
+
+    copy( g_szCurReplayName, charsmax( g_szCurReplayName ), g_szBestNames[styleid] );
+    
+
+    g_iCurReplayStyle = styleid;
+
+
+    setRecordBotName();
+
+    g_bPlyMimicing[g_iRecBot] = true;
+
+    g_iPlyTick[g_iRecBot] = floatround( -1.0 / g_flReplayFrameInterval );
+
+
+    remove_task( 0, 0 ); // Remove the replay restart task.
+}
+
+stock Float:fmod( Float:value, Float:mod )
+{
+    return value - float(floatround( value / mod, floatround_floor )) * mod;
+}
+
+stock Float:lerpAngle( Float:from, Float:to, Float:frac )
+{
+    static Float:max = 360.0;
+
+    new Float:d = fmod( (to - from), max );
+
+    new Float:val = from + ((fmod( 2.0 * d, max )) - d) * frac;
+
+    if ( val < -180.0 )
+        val += 360.0;
+    else if ( val > 180.0 )
+        val -= 360.0;
+
+    return val;
 }

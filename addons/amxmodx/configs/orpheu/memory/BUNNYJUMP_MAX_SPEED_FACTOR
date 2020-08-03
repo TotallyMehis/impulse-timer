@@ -1,0 +1,16 @@
+[
+    {
+        "name" : "BUNNYJUMP_MAX_SPEED_FACTOR",
+        "library" : "mod",
+        "type" : "long",
+        "memoryType" : "data",
+        "identifiers" : 
+        [
+            {
+                "os" : "windows",
+                "mod" : "cstrike",
+                "value" : 0xFF0D8
+            }
+        ]
+    }
+]  
