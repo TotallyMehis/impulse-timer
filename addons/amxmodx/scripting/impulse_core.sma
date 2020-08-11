@@ -796,10 +796,11 @@ public taskMapStuff()
     g_iPrefferedTeam = CS_TEAM_UNASSIGNED;
     new iNumSpawns;
     new Float:vecSpawnPos[3];
-    
-    new Float:flClosestToStart;
     new Float:flDist;
-    new ent_closest_to_start;
+    
+    new Float:flClosestToStart = -1.0;
+    new ent_closest_to_start = -1;
+
     // Find CT spawns. If they exist, use them.
     while ( (ent = engfunc( EngFunc_FindEntityByString, ent, "classname", szCTSpawn )) > 0 )
     {
@@ -816,10 +817,13 @@ public taskMapStuff()
         
         flDist = get_distance_f( vecSpawnPos, g_vecStartPos );
         
-        if ( flClosestToStart <= 0.0 || flDist < flClosestToStart )
+        if ( flClosestToStart < 0.0 || flDist < flClosestToStart )
         {
-            flClosestToStart = flDist;
-            ent_closest_to_start = ent;
+            if ( isValidSpawn( vecSpawnPos ) )
+            {
+                flClosestToStart = flDist;
+                ent_closest_to_start = ent;
+            }
         }
     }
 
@@ -844,10 +848,13 @@ public taskMapStuff()
             
             flDist = get_distance_f( vecSpawnPos, g_vecStartPos );
             
-            if ( flClosestToStart <= 0.0 || flDist < flClosestToStart )
+            if ( flClosestToStart < 0.0 || flDist < flClosestToStart )
             {
-                flClosestToStart = flDist;
-                ent_closest_to_start = ent;
+                if ( isValidSpawn( vecSpawnPos ) )
+                {
+                    flClosestToStart = flDist;
+                    ent_closest_to_start = ent;
+                }
             }
         }
     }
@@ -866,6 +873,18 @@ public taskMapStuff()
         g_vecStartPos = vecSpawnPos;
         //pev( ent_closest_to_start, pev_angles, vecSpawnAng );
     }
+    else
+    {
+        set_fail_state( CONSOLE_PREFIX + "Failed to find a starting location!" );
+        return;
+    }
+    
+
+    if ( !isValidSpawn( g_vecStartPos ) )
+    {
+        set_fail_state( CONSOLE_PREFIX + "Failed to find a non-solid starting location!" );
+        return;
+    }
     
     ent = 0;
     // If we have too few spawns, make them at the starting position.
@@ -873,7 +892,7 @@ public taskMapStuff()
     {
         ent = engfunc( EngFunc_CreateNamedEntity, engfunc( EngFunc_AllocString, ( g_iPrefferedTeam == CS_TEAM_CT ) ? szCTSpawn : szTSpawn ) );
         
-        set_pev( ent, pev_origin, vecSpawnPos );
+        set_pev( ent, pev_origin, g_vecStartPos );
         
         iNumSpawns++;
     }
@@ -1401,4 +1420,16 @@ stock getDefaultStyle()
     }
 
     return INVALID_STYLE;
+}
+
+stock bool:isValidSpawn( Float:pos[3] )
+{
+    new Float:fraction;
+
+    trace_hull( pos, HULL_HUMAN, -1, 0, NULL_VECTOR );
+
+    traceresult( TR_Fraction, fraction );
+    new allsolid = traceresult( TR_AllSolid );
+
+    return !allsolid && fraction == 1.0;
 }
