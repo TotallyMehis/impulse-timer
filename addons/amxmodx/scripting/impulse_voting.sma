@@ -1,12 +1,13 @@
 #include <amxmodx>
 #include <amxmisc>
+#include <xs>
 
 #include <impulse/defs>
 #include <impulse/core>
 #include <impulse/stocks>
 
 
-#define MAPCYCLE_FILE       "/configs/impulse_mapcycle.ini"
+#define MAPSETTINGS_FILE    "/configs/impulse_mapcycle.ini"
 
 #define VOTINGMENU_NAME     "ImpVotingMenu"
 
@@ -597,62 +598,106 @@ stock readPossibleMaps()
 {
     new szFile[256];
     
-    get_basedir( szFile, charsmax( szFile ) );
-    add( szFile, charsmax( szFile ), MAPCYCLE_FILE );
-    if ( !file_exists( szFile ) )
+    get_cvar_string( "mapcyclefile", szFile, charsmax( szFile ) );
+
+    if ( !file_exists( szFile, true ) )
     {
         set_fail_state( CONSOLE_PREFIX + "Mapcycle file '%s' does not exist!", szFile );
         return -1;
     }
 
 
-    new INIParser:parser = INI_CreateParser();
+    new file = fopen( szFile, "r", true );
 
-    INI_SetReaders( parser, "kvFunc_maps", "nsFunc_maps" );
-    INI_ParseFile( parser, szFile );
+    if ( !file )
+    {
+        set_fail_state( CONSOLE_PREFIX + "Failed to open mapcycle file '%s' for reading!", szFile );
+        return -1;
+    }
 
-    INI_DestroyParser( parser );
+
+    new szLine[256];
+    while ( fgets( file, szLine, charsmax( szLine ) ) != 0 )
+    {
+        new index;
+
+        // Remove line endings.
+        index = strfind( szLine, "^r^n", false, 0 );
+        if ( index != -1 )
+        {
+            szLine[index] = '^0';
+        }
+
+        index = xs_strchr( szLine, '^n' );
+        if ( index != -1 )
+        {
+            szLine[index] = '^0';
+        }
+        
+
+        // Remove comments.
+        index = strfind( szLine, "//", false, 0 );
+        if ( index != -1 )
+        {
+            szLine[index] = '^0';
+        }
+
+
+        // Finally, remove whitespaces.
+        trim( szLine );
+
+
+        // Nothing here.
+        if ( szLine[0] == '^n' )
+            continue;
+
+
+        ArrayPushString( g_arrMapList, szLine );
+    }
+
+
+    fclose( file );
 
     return ArraySize( g_arrMapList );
 }
 
-public bool:nsFunc_maps( INIParser:handle, const section[], bool:invalid_tokens, bool:close_bracket, bool:extra_tokens, curtok, Array:arr )
-{
-    //new style[STYLE_SIZE];
-    //copy( style[STYLE_NAME], STYLE_NAME_LENGTH - 1, section );
+// public bool:nsFunc_maps( INIParser:handle, const section[], bool:invalid_tokens, bool:close_bracket, bool:extra_tokens, curtok, Array:arr )
+// {
+//     //new style[STYLE_SIZE];
+//     //copy( style[STYLE_NAME], STYLE_NAME_LENGTH - 1, section );
 
-    new szFullPath[PLATFORM_MAX_PATH];
-    copy( szFullPath, charsmax( szFullPath ), "maps/" );
-    add( szFullPath, charsmax( szFullPath ), section );
-    add( szFullPath, charsmax( szFullPath ), ".bsp" );
+//     new szFullPath[PLATFORM_MAX_PATH];
+//     copy( szFullPath, charsmax( szFullPath ), "maps/" );
+//     add( szFullPath, charsmax( szFullPath ), section );
+//     add( szFullPath, charsmax( szFullPath ), ".bsp" );
     
-    if ( !file_exists( szFullPath, true ) )
-    {
-        server_print( CONSOLE_PREFIX + "Map file '%s' does not exist.", szFullPath );
-        return true;
-    }
+//     if ( !file_exists( szFullPath, true ) )
+//     {
+//         server_print( CONSOLE_PREFIX + "Map file '%s' does not exist.", szFullPath );
+//         return true;
+//     }
 
-    ArrayPushString( g_arrMapList, section );
+//     ArrayPushString( g_arrMapList, section );
 
-    return true;
-}
+//     return true;
+// }
 
-public bool:kvFunc_maps( INIParser:handle, const key[], const value[], bool:invalid_tokens, bool:equal_token, bool:quotes, curtok, Array:arr )
-{
-    //new item = ArraySize( g_arrStyles ) - 1;
+// public bool:kvFunc_maps( INIParser:handle, const key[], const value[], bool:invalid_tokens, bool:equal_token, bool:quotes, curtok, Array:arr )
+// {
+//     //new item = ArraySize( g_arrStyles ) - 1;
 
-    // if ( equali( key, "type" ) )
-    // {
-    //     ArraySetCell( g_arrStyles, item, iValue, STYLE_ID );
-    // }
-    // else
-    // {
-    //     server_print( CONSOLE_PREFIX + "Invalid mapcycle key '%s'!", value );
-    //     return false;
-    // }
+//     // if ( equali( key, "type" ) )
+//     // {
+//     //     ArraySetCell( g_arrStyles, item, iValue, STYLE_ID );
+//     // }
+//     // else
+//     // {
+//     //     server_print( CONSOLE_PREFIX + "Invalid mapcycle key '%s'!", value );
+//     //     return false;
+//     // }
 
-    return true;
-}
+//     return true;
+// }
 
 stock findPossibleMapIndex( const szMapName[] )
 {
