@@ -164,5 +164,49 @@ public cmdSetStyle( ply )
 
 public cmdStyleMenu( ply )
 {
+    static szOption[][] = { "\w", "\y" };
+    static szMenu[256];
+    static szStyleName[64];
+
+
+    new myStyleId = impulse_getplystyleid( ply );
+
+    new len = 0;
+    new fMenuFlags = MENU_KEY_0;
+
+    new numStyles = ArraySize( g_arrStyles );
+
+
+    len += format( szMenu[len], charsmax( szMenu ) - len, "\yStyles Menu^n^n" );
     
+    for ( new i = 0; i < numStyles; i++ )
+    {
+        getStyleName( i, szStyleName, charsmax( szStyleName ) );
+
+        new clrIndex = ( myStyleId == getStyleId( i ) ) ? 1 : 0;
+
+        len += format( szMenu[len], charsmax( szMenu ) - len, "\w%i. %s%s^n",
+            i + 1,
+            szOption[clrIndex],
+            szStyleName );
+
+
+        fMenuFlags |= ( 1 << i );
+    }
+
+
+    len += format( szMenu[len], charsmax( szMenu ) - len, "^n\w0. Exit" );
+
+
+    show_menu( ply, fMenuFlags, szMenu, -1, STYLEMENU_NAME );
+}
+
+public menuStyles( ply, key )
+{
+    new bool:bChangeStyle = key >= 0 && key < ArraySize( g_arrStyles );
+
+    if ( bChangeStyle )
+    {
+        setPlyStyle( ply, getStyleId( key ), true );
+    }
 }

@@ -33,6 +33,9 @@
 #define STYLE_FILE          "/configs/impulse_styles.ini"
 
 
+#define STYLEMENU_NAME      "ImpStyleMenu"
+
+
 
 #define MAX_RECORDS_PRINT   10
 
@@ -88,6 +91,10 @@ new const g_szSounds[][] = { "buttons/bell1.wav", "vox/woop.wav" };
 new const Float:g_vecNull[] = { 0.0, 0.0, 0.0 };
 new g_szCurMap[64];
 new CsTeams:g_iPrefferedTeam = CS_TEAM_CT;
+
+new g_fStyleMenuFlags = (
+    MENU_KEY_1 | MENU_KEY_2 | MENU_KEY_3 | MENU_KEY_4 | MENU_KEY_5 | MENU_KEY_6 | MENU_KEY_7 | MENU_KEY_8 | MENU_KEY_9 | MENU_KEY_0
+);
 
 
 // SETTINGS
@@ -163,6 +170,10 @@ public plugin_init()
     new const cmdSay[] = "cmdSay";
     register_clcmd( "say", cmdSay );
     register_clcmd( "say_team", cmdSay );
+
+
+    register_menucmd( register_menuid( STYLEMENU_NAME ), g_fStyleMenuFlags, "menuStyles" );
+
 
     // Blocked commands
     new const szCmdBlocked[] = "cmdBlocked";
