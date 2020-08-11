@@ -896,6 +896,38 @@ public fwdPlayerPostThink( ply )
     }
 }
 
+stock capVelocities( ply, Float:maxspd )
+{
+    new Float:vel[3];
+    new Float:spd;
+
+    // Velocity
+    pev( ply, pev_velocity, vel );
+    spd = floatsqroot( vel[0] * vel[0] + vel[1] * vel[1] + vel[2] * vel[2] );
+    if ( spd > 0.0 && spd > maxspd )
+    {
+        for ( new i = 0; i < 3; i++ )
+        {
+            vel[i] = vel[i] / spd * maxspd;
+        }
+
+        set_pev( ply, pev_velocity, vel );
+    }
+
+    // Basevelocity
+    pev( ply, pev_basevelocity, vel );
+    spd = floatsqroot( vel[0] * vel[0] + vel[1] * vel[1] + vel[2] * vel[2] );
+    if ( spd > 0.0 && spd > maxspd )
+    {
+        for ( new i = 0; i < 3; i++ )
+        {
+            vel[i] = vel[i] / spd * maxspd;
+        }
+
+        set_pev( ply, pev_basevelocity, vel );
+    }
+}
+
 stock on_press_start( ply )
 {
     new styleid = g_iPlyStyleId[ply];
@@ -911,28 +943,19 @@ stock on_press_start( ply )
     // Cap prespeed
     //
     static styledata[STYLE_SIZE];
-    new Float:vel[3];
-    pev( ply, pev_velocity, vel );
-    new Float:spd = floatsqroot( vel[0] * vel[0] + vel[1] * vel[1] + vel[2] * vel[2] );
+
+    
     new Float:maxspd = -1.0;
     
     if ( impulse_getstyledata( styleid, styledata, sizeof( styledata ) ) )
     {
-        maxspd = Float:styledata[STYLE_MAXSPD];
+        maxspd = Float:styledata[STYLE_MAXPRESPEED];
     }
 
-    if ( spd > 0.0 && maxspd >= 0.0 && spd > maxspd )
+    if ( maxspd >= 0.0 )
     {
-        for ( new i = 0; i < 3; i++ )
-        {
-            vel[i] = vel[i] / spd * maxspd;
-        }
-
-        set_pev( ply, pev_velocity, vel );
+        capVelocities( ply, maxspd );
     }
-
-    set_pev( ply, pev_basevelocity, g_vecNull );
-
 
 
     new ret;
@@ -1242,6 +1265,10 @@ public bool:kvFunc_styles( INIParser:handle, const key[], const value[], bool:in
     else if ( equali( key, "followkzrules" ) )
     {
         ArraySetCell( g_arrStyles, item, iValue != 0, STYLE_FOLLOWKZRULES );
+    }
+    else if ( equali( key, "maxprespeed" ) )
+    {
+        ArraySetCell( g_arrStyles, item, flValue, STYLE_MAXPRESPEED );
     }
     else
     {
