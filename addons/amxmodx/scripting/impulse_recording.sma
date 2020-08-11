@@ -32,6 +32,8 @@
 #define MAX_RECORDING_LENGTH    30
 
 
+#define PRERECORDING_SECONDS    2
+
 // Header structure:
 // MAGIC NUMBER
 // SERVER TICKRATE
@@ -54,8 +56,13 @@ enum _:FrameData
 new Array:g_ArrPlyRecording[IMP_MAXPLAYERS];
 new bool:g_bPlyRecording[IMP_MAXPLAYERS];
 new bool:g_bPlyMimicing[IMP_MAXPLAYERS];
-new g_iPlyTick[IMP_MAXPLAYERS];
 new Float:g_flRecordingAccumFrametime[IMP_MAXPLAYERS];
+
+// PRERECORDING
+new Array:g_ArrPlyPreRecording[IMP_MAXPLAYERS];
+new g_iPlyPreRecordingIndex[IMP_MAXPLAYERS];
+
+new g_nPreRecordingFrames = PRERECORDING_SECONDS * RECORDING_RATE;
 
 
 new g_iRecordingMaxLen = MAX_RECORDING_LENGTH * 60 * RECORDING_RATE;
@@ -63,6 +70,7 @@ new g_iRecordingMaxLen = MAX_RECORDING_LENGTH * 60 * RECORDING_RATE;
 
 // REPLAY BOT
 new g_iRecBot = 0;
+new g_iRecBotTick;
 new Array:g_ArrCurReplay = Invalid_Array;
 new Float:g_flCurReplayTime = INVALID_TIME;
 new g_iCurReplayTickMax = 0;
@@ -168,6 +176,14 @@ public plugin_end()
         }
     }
 
+    for ( new i = 0; i < sizeof( g_ArrPlyPreRecording ); i++ )
+    {
+        if ( g_ArrPlyPreRecording[i] != Invalid_Array )
+        {
+            ArrayDestroy( g_ArrPlyPreRecording[i] );
+        }
+    }
+
     for ( new i = 0; i < MAX_STYLES; i++ )
     {
         if ( g_ArrBest[i] != Invalid_Array )
@@ -195,6 +211,15 @@ public client_connect( ply )
     g_bPlyRecording[ply] = false;
 
     g_flRecordingAccumFrametime[ply] = 0.0;
+
+
+    if ( g_ArrPlyPreRecording[ply] != Invalid_Array )
+    {
+        ArrayDestroy( g_ArrPlyPreRecording[ply] );
+    }
+    
+    g_ArrPlyPreRecording[ply] = ArrayCreate( _:FrameData, g_nPreRecordingFrames );
+    g_iPlyPreRecordingIndex[ply] = 0;
 }
 
 public client_disconnected( ply, bool:drop, message[], maxlen )
@@ -210,18 +235,13 @@ public client_disconnected( ply, bool:drop, message[], maxlen )
 
 public impulse_on_start_post( ply )
 {
-    initPlyRecording( ply );
-    g_iPlyTick[ply] = 0;
+    startPlyRecording( ply );
     g_bPlyRecording[ply] = true;
-
-    g_flRecordingAccumFrametime[ply] = 0.0;
-    insertFrame( ply );
 }
 
 public impulse_on_reset_post( ply )
 {
     g_bPlyRecording[ply] = false;
-    g_iPlyTick[ply] = 0;
 }
 
 public impulse_on_end_post( ply, const recordData[] )
@@ -278,8 +298,8 @@ public server_frame()
     //
     if ( hasRecordBot() && g_bPlyMimicing[g_iRecBot] && g_ArrCurReplay != Invalid_Array )
     {
-        new curTick = ( g_iPlyTick[g_iRecBot] < 0 ) ? 0 : g_iPlyTick[g_iRecBot];
-        new nextTick = ( g_iPlyTick[g_iRecBot] < 0 ) ? 0 : (g_iPlyTick[g_iRecBot] + 1);
+        new curTick = ( g_iRecBotTick < 0 ) ? 0 : g_iRecBotTick;
+        new nextTick = ( g_iRecBotTick < 0 ) ? 0 : (g_iRecBotTick + 1);
         if ( nextTick >= g_iCurReplayTickMax )
             nextTick = g_iCurReplayTickMax - 1;
 
@@ -337,11 +357,11 @@ public server_frame()
         if ( g_flReplayAccumFrametime >= g_flReplayFrameInterval )
         {
             g_flReplayAccumFrametime -= g_flReplayFrameInterval;
-            g_iPlyTick[g_iRecBot]++;
+            g_iRecBotTick++;
         }
 
 
-        if ( g_iPlyTick[g_iRecBot] >= g_iCurReplayTickMax )
+        if ( g_iRecBotTick >= g_iCurReplayTickMax )
         {
             g_bPlyMimicing[g_iRecBot] = false;
             
@@ -385,31 +405,31 @@ public server_frame()
     static ply;
     for ( ply = 1; ply <= g_iMaxPlys; ply++ )
     {
-        if ( g_bPlyRecording[ply] )
+        g_flRecordingAccumFrametime[ply] += frametime;
+
+        if ( g_flRecordingAccumFrametime[ply] >= g_flRecordingFrameInterval )
         {
-            g_flRecordingAccumFrametime[ply] += frametime;
+            g_flRecordingAccumFrametime[ply] -= g_flRecordingFrameInterval;
 
-            if ( g_flRecordingAccumFrametime[ply] >= g_flRecordingFrameInterval )
+            if ( is_user_alive( ply ) )
             {
-                g_flRecordingAccumFrametime[ply] -= g_flRecordingFrameInterval;
+                insertPreFrame( ply );
+            }
 
-
-                g_iPlyTick[ply]++;
-
+            if ( g_bPlyRecording[ply] )
+            {
                 // Check if too long.
-                if ( g_iPlyTick[ply] >= g_iRecordingMaxLen )
+                if ( ArraySize( g_ArrPlyRecording[ply] ) >= g_iRecordingMaxLen )
                 {
                     //client_print_color( ply, ply, CHAT_PREFIX + "Stopped recording your run. Cannot be longer than ^x03%i^x01 minutes.", MAX_RECORDING_LENGTH );
 
                     g_bPlyRecording[ply] = false;
-                    initPlyRecording( ply );
-                    
                     continue;
                 }
 
-
                 insertFrame( ply );
             }
+
         }
     }
     
@@ -751,7 +771,7 @@ stock setRecordBotName()
     set_user_info( bot, "name", szName );
 }
 
-stock initPlyRecording( ply )
+stock startPlyRecording( ply )
 {
     if ( g_ArrPlyRecording[ply] != Invalid_Array )
     {
@@ -761,6 +781,8 @@ stock initPlyRecording( ply )
     {
         g_ArrPlyRecording[ply] = ArrayCreate( _:FrameData );
     }
+
+    copyPreFrames( ply );
 }
 
 stock Float:getDistSqr( const Float:vec1[3], const Float:vec2[3] )
@@ -826,6 +848,69 @@ stock setRecordingPath()
 stock insertFrame( ply )
 {
     static frame[FRAME_SIZE];
+    collectFrameData( ply, frame );
+
+    ArrayPushArray( g_ArrPlyRecording[ply], frame );
+}
+
+stock insertPreFrame( ply )
+{
+    static frame[FRAME_SIZE];
+    collectFrameData( ply, frame );
+
+    new size = ArraySize( g_ArrPlyPreRecording[ply] );
+    if ( size < g_nPreRecordingFrames )
+    {
+        ArrayPushArray( g_ArrPlyPreRecording[ply], frame );
+    }
+    else
+    {
+        ArraySetArray( g_ArrPlyPreRecording[ply], g_iPlyPreRecordingIndex[ply], frame );
+        if ( ++g_iPlyPreRecordingIndex[ply] >= size )
+        {
+            g_iPlyPreRecordingIndex[ply] = 0;
+        }
+    }
+}
+
+stock copyPreFrames( ply )
+{
+    new Array:array = ArrayClone( g_ArrPlyPreRecording[ply] );
+
+    new start_index = g_iPlyPreRecordingIndex[ply];
+
+
+    if ( ArraySize( array ) >= g_nPreRecordingFrames && start_index != 0 )
+    {
+        // Insert one extra slot for shifting.
+        ArrayResize( array, ArraySize( array ) + 1 );
+
+        new lastindex = ArraySize( array ) - 1;
+        
+        for ( new i = start_index; i < lastindex; i++ )
+        {
+            // Shift one up.
+            ArrayInsertCellBefore( array, 0, 0 );
+
+
+            ArraySwap( array, 0, lastindex );
+        }
+
+        // Go back to old size.
+        ArrayResize( array, g_nPreRecordingFrames );
+    }
+
+
+    if ( g_ArrPlyRecording[ply] != Invalid_Array )
+    {
+        ArrayDestroy( g_ArrPlyRecording[ply] );
+    }
+
+    g_ArrPlyRecording[ply] = array;
+}
+
+stock collectFrameData( ply, frame[] )
+{
     static Float:vec[3];
 
     pev( ply, pev_angles, vec );
@@ -835,8 +920,6 @@ stock insertFrame( ply )
     CopyArray( vec, frame[FRAME_POS], 3 );
     
     frame[FRAME_FLAGS] = ( pev( ply, pev_flags ) & FL_DUCKING ) ? FRAMEFLAG_DUCK : 0;
-
-    ArrayPushArray( g_ArrPlyRecording[ply], frame );
 }
 
 stock loadRecordings()
@@ -957,7 +1040,7 @@ stock startReplay( styleid )
 
     g_bPlyMimicing[g_iRecBot] = true;
 
-    g_iPlyTick[g_iRecBot] = floatround( -1.0 / g_flReplayFrameInterval );
+    g_iRecBotTick = floatround( -1.0 / g_flReplayFrameInterval );
 
 
     remove_task( 0, 0 ); // Remove the replay restart task.
