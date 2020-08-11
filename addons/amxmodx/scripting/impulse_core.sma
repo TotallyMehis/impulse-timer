@@ -1271,7 +1271,7 @@ stock bool:setPlyStyle( ply, styleid, print = false )
     {
         new name[STYLE_NAME_LENGTH];
         getStyleName( styleindex, name, charsmax( name ) );
-        client_print_color( ply, ply, CHAT_PREFIX + "Your style is now ^x03%s^x01", name );
+        client_print_color( ply, ply, CHAT_PREFIX + "Your style is now ^x03%s^x01!", name );
     }
 
     sendStyleChangePost( ply, styleid );
