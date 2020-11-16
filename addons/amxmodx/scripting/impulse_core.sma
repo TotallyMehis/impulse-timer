@@ -712,7 +712,7 @@ public taskMapStuff()
     {
         if ( pev_valid( ent ) )
         {
-            pev( ent, pev_target, szTarget, 16 );
+            pev( ent, pev_target, szTarget, charsmax( szTarget ) );
             
             if ( equal( szTarget, "counter_start" )
                 || equal( szTarget, "clockstartbutton" )
@@ -743,59 +743,8 @@ public taskMapStuff()
         return;
     }
     
-    ent = 0;
-    // Remove breakables because they are useless.
-    while ( (ent = engfunc( EngFunc_FindEntityByString, ent, "classname", "func_breakable" )) > 0 )
-        if ( pev_valid( ent ) )
-            engfunc( EngFunc_RemoveEntity, ent );
-    
 
-    ent = 0;
-
-    new Float:vecMoveDir[3];
-    new Float:vecUp[3] = { 0.0, 0.0, 1.0 };
-
-    // Lock doors so we can bhop on them better.
-    while ( (ent = engfunc( EngFunc_FindEntityByString, ent, "classname", "func_door" )) > 0 )
-    {
-        if ( !pev_valid( ent ) )
-        {
-            continue;
-        }
-
-        //
-        // Check if it's a bhop block.
-        //
-
-        new spawnflags = pev( ent, pev_spawnflags );
-
-        // Not even solid?
-        if ( spawnflags & SF_DOOR_PASSABLE ) continue;
-
-        // Not going back automatically?
-        if ( spawnflags & SF_DOOR_NO_AUTO_RETURN ) continue;
-
-        // Only use key activates?
-        if ( spawnflags & SF_DOOR_USE_ONLY ) continue;
-
-        // If we're going up, ignore us.
-        pev( ent, pev_movedir, vecMoveDir );
-
-        if ( xs_vec_dot( vecMoveDir, vecUp ) > 0.0 ) continue;
-
-        // If we have a name, we are probably activated by a button.
-        // TODO: Check for button.
-        new szName[32];
-        szName[0] = 0;
-        pev( ent, pev_targetname, szName, charsmax( szName ) );
-        if ( szName[0] != '^0' )
-        {
-            continue;
-        }
-
-
-        DispatchKeyValue( ent, "speed", 0 );
-    } 
+    lockPlatforms();
     
     
     
@@ -907,6 +856,11 @@ public taskMapStuff()
         
         iNumSpawns++;
     }
+
+
+    // Remove entities last because it can have some side-effects
+    // to the entity finding.
+    cleanupMap();
 }
 
 public fwdPlayerPreThink( ply )
@@ -1443,4 +1397,129 @@ stock bool:isValidSpawn( Float:pos[3] )
     new allsolid = traceresult( TR_AllSolid );
 
     return !allsolid && fraction == 1.0;
+}
+
+// stock findButtonByTarget( szTarget[] )
+// {
+//     new szMyTarget[64];
+//     new ent = 0;
+
+//     while ( (ent = engfunc( EngFunc_FindEntityByString, ent, "classname", "func_button" )) > 0 )
+//     {
+//         if ( !pev_valid( ent ) ) continue;
+
+
+//         pev( ent, pev_target, szMyTarget, charsmax( szMyTarget ) );
+
+//         if ( equali( szMyTarget, szTarget ) )
+//         {
+//             return ent;
+//         }
+//     }
+
+//     return -1;
+// }
+
+stock lockPlatforms()
+{
+    //new Float:vecMoveDir[3];
+    //new Float:vecUp[3] = { 0.0, 0.0, 1.0 };
+
+    new ent = 0;
+
+    // Lock doors so we can bhop on them better.
+    while ( (ent = engfunc( EngFunc_FindEntityByString, ent, "classname", "func_door" )) > 0 )
+    {
+        if ( !pev_valid( ent ) )
+        {
+            server_print("func_door invalid!: %i", ent);
+            continue;
+        }
+
+        //
+        // Check if it's a bhop block.
+        //
+
+        new spawnflags = pev( ent, pev_spawnflags );
+
+        // Not even solid?
+        if ( spawnflags & SF_DOOR_PASSABLE ) continue;
+
+        // Not going back automatically?
+        if ( spawnflags & SF_DOOR_NO_AUTO_RETURN ) continue;
+
+        // Only use key activates?
+        if ( spawnflags & SF_DOOR_USE_ONLY ) continue;
+
+
+        // If we're going up, ignore us.
+        // Apparently this doesn't work very well.
+        //pev( ent, pev_movedir, vecMoveDir );
+        //if ( xs_vec_dot( vecMoveDir, vecUp ) > 0.0 ) continue;
+
+
+        // If we have a name, we are probably activated by a button.
+        new szName[32];
+        szName[0] = 0;
+        pev( ent, pev_targetname, szName, charsmax( szName ) );
+        if ( szName[0] != '^0' )
+        {
+            server_print("func_door name: %s", szName);
+            return;
+            // if ( findButtonByTarget( szName ) != -1 )
+            // {
+            //     continue;
+            // }
+        }
+
+
+        DispatchKeyValue( ent, "speed", 0 );
+        pev( ent, pev_speed, 0.0 );
+    }
+
+    // Apparently buttons are platforms as well.
+    // ent = 0;
+    // while ( (ent = engfunc( EngFunc_FindEntityByString, ent, "classname", "func_button" )) > 0 )
+    // {
+    //     if ( !pev_valid( ent ) )
+    //     {
+    //         continue;
+    //     }
+
+
+    //     new spawnflags = pev( ent, pev_spawnflags );
+
+    //     // we don't even move!
+    //     if ( spawnflags & SF_BUTTON_DONTMOVE ) continue;
+
+    //     // It needs to be touch only to be a platform...
+    //     if ( !(spawnflags & SF_BUTTON_TOUCH_ONLY) ) continue;
+
+    //     // If we're going up, ignore us.
+    //     // Apparently this doesn't work very well.
+    //     //pev( ent, pev_movedir, vecMoveDir );
+    //     //if ( xs_vec_dot( vecMoveDir, vecUp ) > 0.0 ) continue;
+
+
+    //     DispatchKeyValue( ent, "speed", 0 );
+    // }
+}
+
+stock cleanupMap()
+{
+    new ent = 0;
+    
+    // Remove breakables because they are useless.
+    while ( (ent = engfunc( EngFunc_FindEntityByString, ent, "classname", "func_breakable" )) > 0 )
+    {
+        if ( !pev_valid( ent ) ) continue;
+
+
+        new spawnflags = pev( ent, pev_spawnflags );
+
+        if ( spawnflags & SF_BREAK_TRIGGER_ONLY )
+            continue;
+
+        remove_entity( ent );
+    }
 }
