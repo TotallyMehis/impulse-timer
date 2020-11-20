@@ -7,7 +7,7 @@
 #include <impulse/stocks>
 
 
-#define MAPSETTINGS_FILE    "/configs/impulse_mapcycle.ini"
+#define MAPSETTINGS_FILE    "/configs/impulse_mapsettings.cfg"
 
 #define VOTINGMENU_NAME     "ImpVotingMenu"
 
