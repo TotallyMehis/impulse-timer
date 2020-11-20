@@ -457,7 +457,7 @@ stock populateVoteMaps()
 
     while ( ArraySize( mapindices ) < maxvotemaps )
     {
-        new randomindex = random_num( 0, numpossiblemaps );
+        new randomindex = random_num( 0, numpossiblemaps - 1 );
 
         // Already in the list.
         if ( ArrayFindValue( mapindices, randomindex ) != -1 )
