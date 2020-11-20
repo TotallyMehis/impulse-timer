@@ -15,5 +15,5 @@ Only has Windows sigs for Orpheu so autobhop stuff won't work.
 ## Usage
 - `/spawn` to go back to start.
 - By default you can use commands `/kz`, `/speedrun` and `/hlkz` to change styles. `configs/impulse_styles.ini` to edit styles.
-- Somewhat functioning voting (for some reason). `configs/impulse_mapcycle.cfg` to edit mapcycle. `/rtv`, `/nominate <mapname>` commands in-game.
+- Somewhat functioning voting (for some reason). `/rtv`, `/nominate <mapname>` commands in-game.
 
