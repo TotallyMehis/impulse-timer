@@ -13,6 +13,8 @@
 
 #define MAX_MAP_LENGTH      64
 
+#define VOTINGHUD_UPDATE_INTERVAL       1.0
+
 // Uncomment for debugging information.
 //#define DEBUG
 
@@ -65,6 +67,9 @@ new g_fVoteMenuFlags = ( 1 << 0 | 1 << 1 | 1 << 2 | 1 << 3 | 1 << 4 | 1 << 9 );
 new bool:g_bChangingMap = false;
 new g_szChangeMapName[MAX_MAP_LENGTH];
 new g_szCurMapName[MAX_MAP_LENGTH];
+new Float:g_flVoteStartTime = 0.0;
+
+new const Float:g_flVoteTime = 30.0;
 
 
 public plugin_init()
@@ -415,11 +420,15 @@ stock showVotingMenu( ply )
 
     new voteIndex = getVoteMapIndex( ply );
 
+    new timeleft = floatround( g_flVoteTime - (get_gametime() - g_flVoteStartTime), floatround_ceil );
+
     new bool:voted = voteIndex != -1;
 
     new len = 0;
 
     new numMaps = ArraySize( g_arrVotingMaps );
+
+    len += format( szMenu[len], charsmax( szMenu ) - len, "\wVote for next map! (Time: %02is)^n^n", timeleft );
     
     for ( new i = 0; i < numMaps; i++ )
     {
@@ -433,8 +442,7 @@ stock showVotingMenu( ply )
             szMapName );
     }
 
-    show_menu( ply, g_fVoteMenuFlags, szMenu, -1, VOTINGMENU_NAME );
-    
+    show_menu( ply, voted ? 0 : g_fVoteMenuFlags, szMenu, timeleft, VOTINGMENU_NAME );
 }
 
 stock populateVoteMaps()
@@ -500,19 +508,11 @@ public startVote()
 
     populateVoteMaps();
 
+    g_flVoteStartTime = get_gametime();
+    set_task( g_flVoteTime, "taskFinishVote" );
 
-    set_task( 12.0, "taskFinishVote" );
-
-
-    for ( new ply = 1; ply <= g_iMaxPlys; ply++ )
-    {
-        if ( !is_user_connected( ply ) ) continue;
-
-        if ( is_user_bot( ply ) ) continue;
-
-
-        showVotingMenu( ply );
-    }
+    set_task( VOTINGHUD_UPDATE_INTERVAL, "taskUpdateVoteHud" );
+    taskUpdateVoteHud();
 }
 
 public menuVote( ply, key )
@@ -595,6 +595,27 @@ public taskFinishVote()
     {
         finishVote();
     }
+}
+
+public taskUpdateVoteHud()
+{
+    if ( !g_bVoteInProgress )
+    {
+        return;
+    }
+
+
+    for ( new ply = 1; ply <= g_iMaxPlys; ply++ )
+    {
+        if ( !is_user_connected( ply ) ) continue;
+
+        if ( is_user_bot( ply ) ) continue;
+
+
+        showVotingMenu( ply );
+    }
+
+    set_task( VOTINGHUD_UPDATE_INTERVAL, "taskUpdateVoteHud" );
 }
 
 stock readPossibleMaps()
