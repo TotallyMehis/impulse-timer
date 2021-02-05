@@ -13,6 +13,9 @@
 
 #define MAX_MAP_LENGTH      64
 
+// Uncomment for debugging information.
+//#define DEBUG
+
 
 enum
 {
@@ -648,9 +651,12 @@ stock readPossibleMaps()
 
 
         // Nothing here.
-        if ( szLine[0] == '^n' )
+        if ( szLine[0] == '^0' )
             continue;
 
+#if defined DEBUG
+        server_print( CONSOLE_PREFIX + "Added '%s' to map list!", szLine );
+#endif
 
         ArrayPushString( g_arrMapList, szLine );
     }
